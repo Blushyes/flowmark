@@ -1,3 +1,6 @@
+export type Locale = 'en' | 'zh-CN';
+export type LocaleOverride = 'auto' | Locale;
+
 export interface FlowmarkSettings {
   enabled: boolean;
   autoAcceptEnabled: boolean;
@@ -7,6 +10,7 @@ export interface FlowmarkSettings {
   aiBaseURL: string;
   aiApiKey: string;
   aiModel: string;
+  localeOverride: LocaleOverride;
 }
 
 export const DEFAULT_SETTINGS: FlowmarkSettings = {
@@ -18,6 +22,7 @@ export const DEFAULT_SETTINGS: FlowmarkSettings = {
   aiBaseURL: '',
   aiApiKey: '',
   aiModel: '',
+  localeOverride: 'auto',
 };
 
 export interface PageContent {
@@ -79,4 +84,3 @@ export interface ApplyBookmarkSuggestionRequest {
 export interface RejectBookmarkSuggestionRequest {
   bookmarkId: string;
 }
-

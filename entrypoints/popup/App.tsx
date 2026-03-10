@@ -2,6 +2,11 @@ import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js'
 
 import { Button } from '@/src/components/Button';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import {
+  getBrowserUiLanguage,
+  resolveLocale,
+  useI18n,
+} from '@/src/shared/i18n';
 import { openSettingsPage } from '@/src/shared/open-settings-page';
 import { getSettings, setSettings, toOriginPermissionPattern } from '@/src/shared/settings';
 import type { FlowmarkSettings } from '@/src/shared/types';
@@ -9,6 +14,11 @@ import type { FlowmarkSettings } from '@/src/shared/types';
 export default function App() {
   const [settings, setLocalSettings] = createSignal<FlowmarkSettings | null>(null);
   const [permissionGranted, setPermissionGranted] = createSignal<boolean | null>(null);
+
+  const currentLocale = createMemo(() =>
+    resolveLocale(settings()?.localeOverride ?? 'auto', getBrowserUiLanguage()),
+  );
+  const { t } = useI18n(currentLocale);
 
   const originPattern = createMemo(() => {
     const current = settings();
@@ -24,29 +34,33 @@ export default function App() {
     const current = settings();
     if (!current) {
       return {
-        label: 'Loading',
+        label: t('common.loading'),
         tone: 'neutral' as const,
       };
     }
 
     if (!current.aiBaseURL || !current.aiModel) {
       return {
-        label: 'Setup needed',
+        label: t('popup.statusSetupNeeded'),
         tone: 'warning' as const,
       };
     }
 
     if (permissionGranted() === false) {
       return {
-        label: 'Permission missing',
+        label: t('popup.statusPermissionMissing'),
         tone: 'warning' as const,
       };
     }
 
     return {
-      label: 'Ready',
+      label: t('popup.statusReady'),
       tone: 'ready' as const,
     };
+  });
+
+  createEffect(() => {
+    document.title = t('popup.documentTitle');
   });
 
   createEffect(() => {
@@ -90,31 +104,33 @@ export default function App() {
       <div class="flex min-h-screen flex-col px-4 pb-4 pt-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex min-w-0 items-center gap-3">
-            <img src="/icon/32.png" alt="Flowmark" class="h-9 w-9 rounded-xl ring-1 ring-black/5" />
+            <img src="/icon/32.png" alt="FlowMark" class="h-9 w-9 shrink-0 bg-transparent" />
             <div class="min-w-0">
-              <div class="text-[15px] font-semibold tracking-[-0.01em] text-slate-950">Flowmark</div>
-              <div class="text-xs text-slate-600">Smart bookmark routing, right after save</div>
+              <div class="text-[15px] font-semibold tracking-[-0.01em] text-slate-950">FlowMark</div>
+              <div class="text-xs text-slate-600">{t('popup.tagline')}</div>
             </div>
           </div>
 
           <Button type="button" variant="secondary" size="sm" onClick={openOptions}>
-            Settings
+            {t('common.settings')}
           </Button>
         </div>
 
         <div class="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-3">
           <div>
-            <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Recommendation</div>
+            <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+              {t('popup.recommendation')}
+            </div>
             <div class="mt-1 text-sm font-semibold text-slate-900">
-              <Show when={settings()} fallback={'Loading...'}>
-                {(current) => (current().enabled ? 'Enabled' : 'Paused')}
+              <Show when={settings()} fallback={t('common.loading')}>
+                {(current) => (current().enabled ? t('popup.enabled') : t('popup.paused'))}
               </Show>
             </div>
           </div>
 
           <button
             type="button"
-            aria-label="Toggle recommendation"
+            aria-label={t('popup.toggleRecommendation')}
             class={[
               'relative inline-flex h-8 w-14 items-center rounded-full transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/70',
               settings()?.enabled ? 'bg-teal-500' : 'bg-slate-300',
@@ -136,35 +152,46 @@ export default function App() {
           </StatusBadge>
           <Show when={settings()?.autoAcceptEnabled}>
             <StatusBadge tone="neutral" class="px-2.5 py-1 text-[11px] font-medium">
-              Auto accept {settings()?.autoAcceptSeconds}s
+              {t('popup.autoAccept', { seconds: settings()?.autoAcceptSeconds ?? 0 })}
             </StatusBadge>
           </Show>
         </div>
 
         <div class="mt-4 flex-1 rounded-[24px] border border-slate-200 bg-white">
           <SectionRow
-            label="AI endpoint"
-            value={settings()?.aiBaseURL ? safeOrigin(settings()!.aiBaseURL) : 'Not configured'}
+            label={t('popup.aiEndpoint')}
+            value={
+              settings()?.aiBaseURL
+                ? safeOrigin(settings()?.aiBaseURL ?? '', t('common.invalid'))
+                : t('popup.notConfigured')
+            }
           />
-          <SectionRow label="Model" value={settings()?.aiModel || 'Not configured'} />
           <SectionRow
-            label="Permission"
-            value={permissionLabel(permissionGranted())}
+            label={t('popup.model')}
+            value={settings()?.aiModel || t('popup.notConfigured')}
+          />
+          <SectionRow
+            label={t('popup.permission')}
+            value={permissionLabel(permissionGranted(), t)}
             valueClass={permissionTone(permissionGranted())}
           />
           <SectionRow
-            label="Page text"
-            value={settings()?.sendPageText ? `On · ${settings()?.maxPageChars} chars` : 'Off'}
+            label={t('popup.pageText')}
+            value={
+              settings()?.sendPageText
+                ? t('common.onWithChars', { count: settings()?.maxPageChars ?? 0 })
+                : t('common.off')
+            }
             last
           />
         </div>
 
         <div class="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button type="button" onClick={openOptions}>
-            Open full settings
+            {t('popup.openFullSettings')}
           </Button>
           <Button type="button" variant="secondary" onClick={toggleEnabled}>
-            {settings()?.enabled ? 'Pause' : 'Enable'}
+            {settings()?.enabled ? t('common.pause') : t('common.enable')}
           </Button>
         </div>
       </div>
@@ -181,16 +208,24 @@ function SectionRow(props: { label: string; value: string; valueClass?: string; 
       ].join(' ')}
     >
       <div class="text-xs font-medium text-slate-500">{props.label}</div>
-      <div class={['max-w-[185px] truncate text-right text-xs font-semibold text-slate-900', props.valueClass ?? ''].join(' ')}>
+      <div
+        class={[
+          'max-w-[185px] truncate text-right text-xs font-semibold text-slate-900',
+          props.valueClass ?? '',
+        ].join(' ')}
+      >
         {props.value}
       </div>
     </div>
   );
 }
 
-function permissionLabel(granted: boolean | null): string {
-  if (granted == null) return 'Unknown';
-  return granted ? 'Granted' : 'Not granted';
+function permissionLabel(
+  granted: boolean | null,
+  t: (key: 'common.unknown' | 'common.granted' | 'common.notGranted') => string,
+): string {
+  if (granted == null) return t('common.unknown');
+  return granted ? t('common.granted') : t('common.notGranted');
 }
 
 function permissionTone(granted: boolean | null): string {
@@ -198,10 +233,10 @@ function permissionTone(granted: boolean | null): string {
   return granted ? 'text-teal-700' : 'text-amber-700';
 }
 
-function safeOrigin(baseURL: string): string {
+function safeOrigin(baseURL: string, invalidLabel: string): string {
   try {
     return new URL(baseURL).origin;
   } catch {
-    return 'Invalid';
+    return invalidLabel;
   }
 }

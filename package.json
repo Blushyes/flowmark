@@ -12,7 +12,9 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "predev": "node scripts/ensure-dev-profile.mjs",
+    "predev:firefox": "node scripts/ensure-dev-profile.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.35",

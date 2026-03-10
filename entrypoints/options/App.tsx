@@ -3,8 +3,13 @@ import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js'
 
 import { Button } from '@/src/components/Button';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import {
+  getBrowserUiLanguage,
+  resolveLocale,
+  useI18n,
+} from '@/src/shared/i18n';
 import { getSettings, normalizeAiBaseURL, setSettings, toOriginPermissionPattern } from '@/src/shared/settings';
-import type { FlowmarkSettings } from '@/src/shared/types';
+import type { FlowmarkSettings, LocaleOverride } from '@/src/shared/types';
 
 type SaveStatus =
   | { kind: 'idle' }
@@ -15,6 +20,11 @@ export default function App() {
   const [settings, setLocalSettings] = createSignal<FlowmarkSettings | null>(null);
   const [permissionGranted, setPermissionGranted] = createSignal<boolean | null>(null);
   const [saveStatus, setSaveStatus] = createSignal<SaveStatus>({ kind: 'idle' });
+
+  const currentLocale = createMemo(() =>
+    resolveLocale(settings()?.localeOverride ?? 'auto', getBrowserUiLanguage()),
+  );
+  const { t } = useI18n(currentLocale);
 
   const saveErrorMessage = createMemo(() => {
     const status = saveStatus();
@@ -33,14 +43,18 @@ export default function App() {
 
   const providerStatus = createMemo(() => {
     const current = settings();
-    if (!current) return { label: 'Loading', tone: 'neutral' as const };
+    if (!current) return { label: t('common.loading'), tone: 'neutral' as const };
     if (!current.aiBaseURL || !current.aiModel) {
-      return { label: 'Setup needed', tone: 'warning' as const };
+      return { label: t('options.statusSetupNeeded'), tone: 'warning' as const };
     }
     if (permissionGranted() === false) {
-      return { label: 'Permission missing', tone: 'warning' as const };
+      return { label: t('options.statusPermissionMissing'), tone: 'warning' as const };
     }
-    return { label: 'Ready', tone: 'ready' as const };
+    return { label: t('options.statusReady'), tone: 'ready' as const };
+  });
+
+  createEffect(() => {
+    document.title = t('options.documentTitle');
   });
 
   createEffect(() => {
@@ -107,17 +121,17 @@ export default function App() {
       if (current.enabled && !enabled) {
         setSaveStatus({
           kind: 'error',
-          message: 'Host permission was denied. Recommendation has been disabled.',
+          message: t('options.permissionDeniedDisabled'),
         });
         return;
       }
 
       setSaveStatus({ kind: 'saved' });
       setTimeout(() => setSaveStatus({ kind: 'idle' }), 2000);
-    } catch (error) {
+    } catch {
       setSaveStatus({
         kind: 'error',
-        message: error instanceof Error ? error.message : 'Failed to save settings.',
+        message: t('options.saveFailed'),
       });
     }
   };
@@ -128,17 +142,13 @@ export default function App() {
         <header class="border-b border-slate-200 pb-5">
           <div class="flex items-start justify-between gap-4">
             <div class="flex items-center gap-3">
-              <img src="/icon/32.png" alt="Flowmark" class="h-10 w-10 rounded-xl ring-1 ring-black/5" />
+              <img src="/icon/32.png" alt="FlowMark" class="h-10 w-10 shrink-0 bg-transparent" />
               <div>
-                <h1 class="text-xl font-semibold tracking-[-0.01em] text-slate-950">Flowmark Settings</h1>
-                <p class="mt-1 text-sm text-slate-600">
-                  Configure your AI provider, recommendation behavior, and auto-accept flow.
-                </p>
+                <h1 class="text-xl font-semibold tracking-[-0.01em] text-slate-950">{t('options.headingTitle')}</h1>
+                <p class="mt-1 text-sm text-slate-600">{t('options.headingDescription')}</p>
               </div>
             </div>
-            <StatusBadge tone={providerStatus().tone}>
-              {providerStatus().label}
-            </StatusBadge>
+            <StatusBadge tone={providerStatus().tone}>{providerStatus().label}</StatusBadge>
           </div>
         </header>
 
@@ -147,26 +157,37 @@ export default function App() {
             <div class="space-y-6 py-6">
               <section class="rounded-3xl border border-slate-200 bg-white">
                 <SectionHeader
-                  title="Recommendation"
-                  description="Tune when Flowmark suggests, auto-applies, and sends page content."
+                  title={t('options.recommendationTitle')}
+                  description={t('options.recommendationDescription')}
                 />
 
                 <div class="border-t border-slate-200">
+                  <SelectRow
+                    label={t('options.languageLabel')}
+                    description={t('options.languageDescription')}
+                    value={current().localeOverride}
+                    onInput={(value) => update('localeOverride', value)}
+                    options={[
+                      { value: 'auto', label: t('common.auto') },
+                      { value: 'en', label: t('common.english') },
+                      { value: 'zh-CN', label: t('common.chineseSimplified') },
+                    ]}
+                  />
                   <ToggleRow
-                    label="Enable smart recommendation"
-                    description="Show a suggestion pill after saving a bookmark."
+                    label={t('options.enableRecommendationLabel')}
+                    description={t('options.enableRecommendationDescription')}
                     checked={current().enabled}
                     onInput={(checked) => update('enabled', checked)}
                   />
                   <ToggleRow
-                    label="Auto-accept"
-                    description="Automatically move or rename after a countdown."
+                    label={t('options.autoAcceptLabel')}
+                    description={t('options.autoAcceptDescription')}
                     checked={current().autoAcceptEnabled}
                     onInput={(checked) => update('autoAcceptEnabled', checked)}
                   />
                   <NumberRow
-                    label="Auto-accept seconds"
-                    description="0-60 seconds"
+                    label={t('options.autoAcceptSecondsLabel')}
+                    description={t('options.autoAcceptSecondsDescription')}
                     value={current().autoAcceptSeconds}
                     min="0"
                     max="60"
@@ -174,14 +195,14 @@ export default function App() {
                     onInput={(value) => update('autoAcceptSeconds', value)}
                   />
                   <ToggleRow
-                    label="Send page text to AI"
-                    description="Off by default. When on, page text is truncated before sending."
+                    label={t('options.sendPageTextLabel')}
+                    description={t('options.sendPageTextDescription')}
                     checked={current().sendPageText}
                     onInput={(checked) => update('sendPageText', checked)}
                   />
                   <NumberRow
-                    label="Max page chars"
-                    description="500-50,000 characters"
+                    label={t('options.maxPageCharsLabel')}
+                    description={t('options.maxPageCharsDescription')}
                     value={current().maxPageChars}
                     min="500"
                     max="50000"
@@ -194,47 +215,40 @@ export default function App() {
 
               <section class="rounded-3xl border border-slate-200 bg-white">
                 <SectionHeader
-                  title="AI Provider"
-                  description="Use any OpenAI-compatible endpoint. Host permission is requested on save."
+                  title={t('options.aiProviderTitle')}
+                  description={t('options.aiProviderDescription')}
                 />
 
                 <div class="border-t border-slate-200 px-5 py-5">
                   <div class="space-y-5">
-                    <FieldBlock label="Base URL (normalized to /v1)">
+                    <FieldBlock label={t('options.baseUrlLabel')}>
                       <input
                         type="url"
                         value={current().aiBaseURL}
-                        placeholder="https://api.openai.com/v1"
+                        placeholder={t('options.baseUrlPlaceholder')}
                         class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                         onInput={(event) => update('aiBaseURL', event.currentTarget.value)}
                       />
                       <div class="mt-2 text-xs text-slate-600">
-                        Permission:{' '}
-                    <span class={permissionGranted() == null ? 'text-slate-600' : permissionGranted() ? 'text-teal-700' : 'text-amber-700'}>
-                      {permissionGranted() == null
-                        ? 'unknown'
-                        : permissionGranted()
-                              ? 'granted'
-                              : 'not granted'}
-                        </span>
+                        {t('options.permissionLabel')}: <span class={permissionGranted() == null ? 'text-slate-600' : permissionGranted() ? 'text-teal-700' : 'text-amber-700'}>{permissionText(permissionGranted(), t)}</span>
                       </div>
                     </FieldBlock>
 
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                      <FieldBlock label="Model">
+                      <FieldBlock label={t('options.modelLabel')}>
                         <input
                           type="text"
                           value={current().aiModel}
-                          placeholder="gpt-4o-mini"
+                          placeholder={t('options.modelPlaceholder')}
                           class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                           onInput={(event) => update('aiModel', event.currentTarget.value)}
                         />
                       </FieldBlock>
-                      <FieldBlock label="API Key (optional)">
+                      <FieldBlock label={t('options.apiKeyLabel')}>
                         <input
                           type="password"
                           value={current().aiApiKey}
-                          placeholder="sk-..."
+                          placeholder={t('options.apiKeyPlaceholder')}
                           class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                           onInput={(event) => update('aiApiKey', event.currentTarget.value)}
                         />
@@ -247,14 +261,14 @@ export default function App() {
               <footer class="flex flex-col items-start justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center">
                 <div class="text-sm text-slate-600">
                   <Show when={saveStatus().kind === 'saved'}>
-                    <span class="text-teal-700">Saved.</span>
+                    <span class="text-teal-700">{t('common.saved')}</span>
                   </Show>
                   <Show when={saveErrorMessage()}>
                     {(message) => <span class="text-red-700">{message()}</span>}
                   </Show>
                 </div>
                 <Button type="button" onClick={handleSave}>
-                  Save settings
+                  {t('options.saveSettings')}
                 </Button>
               </footer>
             </div>
@@ -325,6 +339,30 @@ function NumberRow(props: {
   );
 }
 
+function SelectRow(props: {
+  label: string;
+  description: string;
+  value: LocaleOverride;
+  options: Array<{ value: LocaleOverride; label: string }>;
+  onInput: (value: LocaleOverride) => void;
+}) {
+  return (
+    <div class="grid grid-cols-1 gap-3 border-b border-slate-200 px-5 py-4 sm:grid-cols-[1fr_180px] sm:items-center">
+      <div>
+        <div class="text-sm font-medium text-slate-900">{props.label}</div>
+        <div class="mt-1 text-xs text-slate-600">{props.description}</div>
+      </div>
+      <select
+        value={props.value}
+        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+        onInput={(event) => props.onInput(event.currentTarget.value as LocaleOverride)}
+      >
+        <For each={props.options}>{(option) => <option value={option.value}>{option.label}</option>}</For>
+      </select>
+    </div>
+  );
+}
+
 function FieldBlock(props: { label: string; children: JSX.Element }) {
   return (
     <label class="block">
@@ -349,6 +387,14 @@ function Skeleton() {
       </div>
     </div>
   );
+}
+
+function permissionText(
+  granted: boolean | null,
+  t: (key: 'common.unknown' | 'common.granted' | 'common.notGranted') => string,
+): string {
+  if (granted == null) return t('common.unknown');
+  return granted ? t('common.granted') : t('common.notGranted');
 }
 
 function toInt(value: string): number {

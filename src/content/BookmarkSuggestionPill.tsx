@@ -1,10 +1,12 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
 
+import { createTranslator } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
-import type { BookmarkSuggestionUpdatePayload } from '@/src/shared/types';
+import type { BookmarkSuggestionUpdatePayload, Locale } from '@/src/shared/types';
 
 type Props = {
   payload: BookmarkSuggestionUpdatePayload;
+  locale: Locale;
   requestRemove: () => void;
 };
 
@@ -27,14 +29,15 @@ export function BookmarkSuggestionPill(props: Props) {
     props.payload.kind === 'error' ? props.payload : null,
   );
   const canOpenOptions = createMemo(() => {
-    const p = errorPayload();
-    return p?.canOpenOptions ?? false;
+    const payload = errorPayload();
+    return payload?.canOpenOptions ?? false;
   });
+  const translator = createMemo(() => createTranslator(props.locale));
 
   const confidencePercent = createMemo(() => {
-    const p = readyPayload();
-    if (!p) return null;
-    return Math.round(p.suggestion.confidence * 100);
+    const payload = readyPayload();
+    if (!payload) return null;
+    return Math.round(payload.suggestion.confidence * 100);
   });
 
   const confidenceClass = createMemo(() => {
@@ -55,13 +58,13 @@ export function BookmarkSuggestionPill(props: Props) {
   };
 
   const handleAccept = () => {
-    const p = readyPayload();
-    if (!p) return;
+    const payload = readyPayload();
+    if (!payload) return;
     closeWithAnimation(() => {
       void messaging.sendMessage('applyBookmarkSuggestion', {
-        bookmarkId: p.bookmarkId,
-        suggestedFolder: p.suggestion.suggestedFolder,
-        title: p.suggestion.title,
+        bookmarkId: payload.bookmarkId,
+        suggestedFolder: payload.suggestion.suggestedFolder,
+        title: payload.suggestion.title,
       });
     });
   };
@@ -145,33 +148,35 @@ export function BookmarkSuggestionPill(props: Props) {
               <FolderIcon />
             </Show>
             <Show when={readyPayload()}>
-              {(p) => (
+              {(payload) => (
                 <span class="truncate text-sm font-medium text-slate-800">
-                  {p().suggestion.suggestedFolder || '(Bookmarks Bar)'}
+                  {payload().suggestion.suggestedFolder || translator().t('common.bookmarksBar')}
                 </span>
               )}
             </Show>
             <Show when={props.payload.kind === 'loading'}>
-              <span class="truncate text-sm font-medium text-slate-800">Smart recommendation...</span>
+              <span class="truncate text-sm font-medium text-slate-800">
+                {translator().t('content.smartRecommendation')}
+              </span>
             </Show>
             <Show when={errorPayload()}>
-              {(p) => (
-                <span class="truncate text-sm font-medium text-red-700">{p().message}</span>
+              {(payload) => (
+                <span class="truncate text-sm font-medium text-red-700">{payload().message}</span>
               )}
             </Show>
             <Show when={readyPayload()}>
-              <span
-                class={`flex-none rounded-sm px-1.5 py-0.5 text-xs font-medium ${confidenceClass()}`}
-              >
+              <span class={`flex-none rounded-sm px-1.5 py-0.5 text-xs font-medium ${confidenceClass()}`}>
                 {confidencePercent()}%
               </span>
             </Show>
           </div>
 
           <div class="mt-0.5 truncate text-sm text-slate-500" title={props.payload.title}>
-            <Show when={!isError()}>{props.payload.title || '(untitled)'}</Show>
+            <Show when={!isError()}>
+              {props.payload.title || translator().t('common.untitled')}
+            </Show>
             <Show when={isError()}>
-              <span class="text-red-500">Try bookmarking again</span>
+              <span class="text-red-500">{translator().t('content.tryBookmarkingAgain')}</span>
             </Show>
           </div>
         </div>
@@ -181,7 +186,7 @@ export function BookmarkSuggestionPill(props: Props) {
             <button
               type="button"
               class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200"
-              title="Reject"
+              title={translator().t('content.reject')}
               onClick={handleReject}
             >
               <XIcon />
@@ -189,7 +194,7 @@ export function BookmarkSuggestionPill(props: Props) {
             <button
               type="button"
               class="relative flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-              title="Accept"
+              title={translator().t('content.accept')}
               onClick={handleAccept}
             >
               <Show
@@ -200,14 +205,7 @@ export function BookmarkSuggestionPill(props: Props) {
                 fallback={<CheckIcon />}
               >
                 <svg class="absolute inset-0 h-full w-full" viewBox="0 0 36 36">
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="16"
-                    fill="none"
-                    stroke="#dcfce7"
-                    stroke-width="2"
-                  />
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="#dcfce7" stroke-width="2" />
                   <circle
                     cx="18"
                     cy="18"
@@ -230,7 +228,7 @@ export function BookmarkSuggestionPill(props: Props) {
               class="flex h-8 items-center justify-center rounded-full bg-slate-100 px-3 text-xs font-medium text-slate-700 hover:bg-slate-200"
               onClick={handleOpenOptions}
             >
-              Settings
+              {translator().t('content.openSettings')}
             </button>
           </Show>
         </div>

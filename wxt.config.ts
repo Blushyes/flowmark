@@ -14,9 +14,10 @@ export default defineConfig({
     plugins: [tailwindcss()],
   }),
   manifest: {
-    name: 'Flowmark',
-    short_name: 'Flowmark',
-    description: 'Smart bookmark recommendations after you save a page.',
+    default_locale: 'en',
+    name: '__MSG_extName__',
+    short_name: '__MSG_extShortName__',
+    description: '__MSG_extDescription__',
     permissions: ['bookmarks', 'storage', 'tabs'],
     optional_host_permissions: ['https://*/*', 'http://*/*'],
   },

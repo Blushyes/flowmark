@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { DEFAULT_SETTINGS, type FlowmarkSettings } from './types';
 
+const localeOverrideSchema = z.enum(['auto', 'en', 'zh-CN']);
+
 const settingsSchema = z
   .object({
     enabled: z.boolean().optional(),
@@ -12,6 +14,7 @@ const settingsSchema = z
     aiBaseURL: z.string().optional(),
     aiApiKey: z.string().optional(),
     aiModel: z.string().optional(),
+    localeOverride: localeOverrideSchema.optional(),
   })
   .strict();
 
@@ -68,4 +71,3 @@ function clampInt(value: number, min: number, max: number): number {
   const v = Number.isFinite(value) ? Math.trunc(value) : min;
   return Math.min(max, Math.max(min, v));
 }
-

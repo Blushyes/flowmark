@@ -5,14 +5,17 @@ import { render } from 'solid-js/web';
 import '~/assets/content-ui.css';
 
 import { BookmarkSuggestionPill } from '@/src/content/BookmarkSuggestionPill';
+import { getCurrentLocale } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
 import type {
   BookmarkSuggestionUpdatePayload,
   GetPageContentRequest,
+  Locale,
   PageContent,
 } from '@/src/shared/types';
 
 const [payload, setPayload] = createSignal<BookmarkSuggestionUpdatePayload | null>(null);
+const [locale, setLocale] = createSignal<Locale>('en');
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
@@ -57,8 +60,12 @@ export default defineContentScript({
                 }}
               >
                 <Show when={payload()}>
-                  {(p) => (
-                    <BookmarkSuggestionPill payload={p()} requestRemove={requestRemove} />
+                  {(currentPayload) => (
+                    <BookmarkSuggestionPill
+                      payload={currentPayload()}
+                      locale={locale()}
+                      requestRemove={requestRemove}
+                    />
                   )}
                 </Show>
               </div>
@@ -74,8 +81,9 @@ export default defineContentScript({
     };
 
     messaging.onMessage('bookmarkSuggestionUpdate', ({ data }) => {
-      setPayload(data);
       void (async () => {
+        setLocale(await getCurrentLocale());
+        setPayload(data);
         await waitForBody();
         const instance = await ensureUi();
         if (!isMounted) {
@@ -92,9 +100,6 @@ export default defineContentScript({
 });
 
 function styleHost(shadowHost: HTMLElement) {
-  // Keep the host fixed as a fallback anchor; actual pill container is also
-  // fixed inside the ShadowRoot to avoid page-flow positioning issues.
-  // Use important to beat WXT's `:host { all: initial !important; }` reset.
   shadowHost.style.setProperty('position', 'fixed', 'important');
   shadowHost.style.setProperty('top', '20px', 'important');
   shadowHost.style.setProperty('right', '20px', 'important');
@@ -129,15 +134,13 @@ function getPageContent(request: GetPageContentRequest): PageContent {
     document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ?? '';
 
   const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
-    .map((h) => h.textContent?.trim() ?? '')
-    .filter((t) => t.length > 0)
+    .map((heading) => heading.textContent?.trim() ?? '')
+    .filter((text) => text.length > 0)
     .slice(0, 8);
 
   const includeText = Boolean(request.includeText);
   const maxChars = Math.max(0, Math.trunc(request.maxChars));
-  const text = includeText
-    ? truncateText(document.body?.innerText?.trim() ?? '', maxChars)
-    : null;
+  const text = includeText ? truncateText(document.body?.innerText?.trim() ?? '', maxChars) : null;
 
   return {
     url,

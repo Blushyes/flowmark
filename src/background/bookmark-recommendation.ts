@@ -2,6 +2,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
+import { createTranslator, getCurrentLocale } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
 import { openSettingsPage } from '@/src/shared/open-settings-page';
 import { getSettings, toOriginPermissionPattern } from '@/src/shared/settings';
@@ -117,14 +118,16 @@ export function initBookmarkRecommendation(): void {
         if (!settings.enabled) continue;
 
         const ui = toUiConfig(settings);
+        const locale = await getCurrentLocale(settings);
+        const { t } = createTranslator(locale);
 
-        const configError = await getAiConfigError(settings);
+        const configError = await getAiConfigError(settings, t);
         if (configError) {
           void sendUiUpdate(job.tabId, {
             kind: 'error',
             bookmarkId,
             url: job.url,
-            title: job.originalTitle || 'Bookmark',
+            title: job.originalTitle || t('common.bookmark'),
             message: configError.message,
             ui,
             canOpenOptions: configError.canOpenOptions,
@@ -136,7 +139,7 @@ export function initBookmarkRecommendation(): void {
           kind: 'loading',
           bookmarkId,
           url: job.url,
-          title: job.originalTitle || 'Saving...',
+          title: job.originalTitle || t('common.saving'),
           ui,
         });
 
@@ -150,6 +153,7 @@ export function initBookmarkRecommendation(): void {
           originalTitle: job.originalTitle,
           pageContent,
           folderPaths,
+          untitledFallback: t('common.untitled'),
         });
 
         if (!suggestion) {
@@ -157,8 +161,8 @@ export function initBookmarkRecommendation(): void {
             kind: 'error',
             bookmarkId,
             url: job.url,
-            title: job.originalTitle || 'Bookmark',
-            message: 'Failed to get AI recommendation.',
+            title: job.originalTitle || t('common.bookmark'),
+            message: t('background.failedRecommendation'),
             ui,
             canOpenOptions: false,
           });
@@ -282,10 +286,11 @@ async function collectFolderPaths(): Promise<string[]> {
 
 async function getAiConfigError(
   settings: FlowmarkSettings,
+  t: (key: 'background.aiNotConfigured' | 'background.hostPermissionNotGranted' | 'background.invalidAiBaseUrl') => string,
 ): Promise<{ message: string; canOpenOptions: boolean } | null> {
   if (!settings.aiBaseURL || !settings.aiModel) {
     return {
-      message: 'AI is not configured. Open settings to set base URL and model.',
+      message: t('background.aiNotConfigured'),
       canOpenOptions: true,
     };
   }
@@ -295,13 +300,13 @@ async function getAiConfigError(
     const granted = await browser.permissions.contains({ origins: [originPattern] });
     if (!granted) {
       return {
-        message: 'Host permission not granted for the configured AI base URL.',
+        message: t('background.hostPermissionNotGranted'),
         canOpenOptions: true,
       };
     }
   } catch {
     return {
-      message: 'Invalid AI base URL.',
+      message: t('background.invalidAiBaseUrl'),
       canOpenOptions: true,
     };
   }
@@ -316,6 +321,7 @@ async function getSuggestion(
     originalTitle: string;
     pageContent: PageContent;
     folderPaths: string[];
+    untitledFallback: string;
   },
 ): Promise<BookmarkSuggestion | null> {
   const provider = createOpenAICompatible({
@@ -364,7 +370,7 @@ async function getSuggestion(
       });
 
       const parsed = suggestionSchema.safeParse(result.output);
-      if (parsed.success) return normalizeSuggestion(parsed.data);
+      if (parsed.success) return normalizeSuggestion(parsed.data, input.untitledFallback);
     } catch {
       // Fall back to plain JSON parsing for OpenAI-compatible providers that don't
       // support structured outputs.
@@ -384,13 +390,13 @@ async function getSuggestion(
     const parsed = suggestionSchema.safeParse(json);
     if (!parsed.success) return null;
 
-    return normalizeSuggestion(parsed.data);
+    return normalizeSuggestion(parsed.data, input.untitledFallback);
   } catch {
     return null;
   }
 }
 
-function normalizeSuggestion(value: BookmarkSuggestion): BookmarkSuggestion {
+function normalizeSuggestion(value: BookmarkSuggestion, untitledFallback: string): BookmarkSuggestion {
   const folder = value.suggestedFolder
     .split(/[-/]+/g)
     .map((p) => p.trim())
@@ -404,7 +410,7 @@ function normalizeSuggestion(value: BookmarkSuggestion): BookmarkSuggestion {
 
   return {
     suggestedFolder: folder,
-    title: title.length > 0 ? title : 'Untitled',
+    title: title.length > 0 ? title : untitledFallback,
     confidence,
   };
 }
