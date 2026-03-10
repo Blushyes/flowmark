@@ -13,9 +13,5 @@ export default defineConfig({
     description: 'Smart bookmark recommendations after you save a page.',
     permissions: ['bookmarks', 'storage', 'tabs'],
     optional_host_permissions: ['https://*/*', 'http://*/*'],
-    options_ui: {
-      page: 'options.html',
-      open_in_tab: true,
-    },
   },
 });

@@ -3,6 +3,7 @@ import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
 import { messaging } from '@/src/shared/messaging';
+import { openSettingsPage } from '@/src/shared/open-settings-page';
 import { getSettings, toOriginPermissionPattern } from '@/src/shared/settings';
 import type {
   BookmarkSuggestion,
@@ -92,7 +93,7 @@ export function initBookmarkRecommendation(): void {
   });
 
   messaging.onMessage('openOptions', async () => {
-    await browser.runtime.openOptionsPage();
+    await openSettingsPage();
   });
 
   async function drainQueue(): Promise<void> {

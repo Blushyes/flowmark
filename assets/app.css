@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin 'tailwind-scrollbar';
 
 @layer base {
   :root {
@@ -6,23 +7,46 @@
   }
 
   html,
-  body {
-    height: 100%;
+  body,
+  #root {
+    min-height: 100%;
   }
 
+  html,
   body {
     margin: 0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-      Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
-    background: rgb(248 250 252); /* slate-50 */
-    color: rgb(15 23 42); /* slate-900 */
   }
 
-  input,
+  body {
+    font-family: 'Inter', 'SF Pro Text', 'Segoe UI', sans-serif;
+    background: #f5fffd;
+    color: rgb(15 23 42);
+  }
+
+  .flowmark-scroll-root {
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   button,
+  input,
   textarea,
   select {
     font: inherit;
   }
-}
 
+  button {
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
