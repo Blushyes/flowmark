@@ -3,6 +3,7 @@ export type LocaleOverride = 'auto' | Locale;
 
 export interface FlowmarkSettings {
   enabled: boolean;
+  duplicateCheckEnabled: boolean;
   autoAcceptEnabled: boolean;
   autoAcceptSeconds: number;
   sendPageText: boolean;
@@ -15,6 +16,7 @@ export interface FlowmarkSettings {
 
 export const DEFAULT_SETTINGS: FlowmarkSettings = {
   enabled: true,
+  duplicateCheckEnabled: true,
   autoAcceptEnabled: true,
   autoAcceptSeconds: 5,
   sendPageText: false,
@@ -44,6 +46,28 @@ export interface BookmarkSuggestion {
   confidence: number;
 }
 
+export interface DuplicateBookmarkMatch {
+  id: string;
+  title: string;
+  url: string;
+  folderPath: string;
+}
+
+export type DuplicateBookmarkAction =
+  | 'keep_new'
+  | 'delete_new'
+  | 'move_new_to_existing_folder'
+  | 'open_existing';
+
+export interface DuplicateBookmarkUpdatePayload {
+  kind: 'duplicate';
+  bookmarkId: string;
+  url: string;
+  title: string;
+  matches: DuplicateBookmarkMatch[];
+  ui: BookmarkSuggestionUiConfig;
+}
+
 export type BookmarkSuggestionUpdatePayload =
   | {
       kind: 'loading';
@@ -68,7 +92,8 @@ export type BookmarkSuggestionUpdatePayload =
       message: string;
       ui: BookmarkSuggestionUiConfig;
       canOpenOptions: boolean;
-    };
+    }
+  | DuplicateBookmarkUpdatePayload;
 
 export interface BookmarkSuggestionUiConfig {
   autoAcceptEnabled: boolean;
@@ -82,5 +107,19 @@ export interface ApplyBookmarkSuggestionRequest {
 }
 
 export interface RejectBookmarkSuggestionRequest {
+  bookmarkId: string;
+}
+
+export interface ResolveDuplicateBookmarkRequest {
+  bookmarkId: string;
+  action: DuplicateBookmarkAction;
+  targetBookmarkId?: string;
+}
+
+export interface DismissDuplicateBookmarkRequest {
+  bookmarkId: string;
+}
+
+export interface OpenBookmarkRequest {
   bookmarkId: string;
 }

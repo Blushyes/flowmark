@@ -197,6 +197,10 @@ export default function App() {
                 ? t('common.onWithChars', { count: settings()?.maxPageChars ?? 0 })
                 : t('common.off')
             }
+          />
+          <SectionRow
+            label={t('popup.duplicateCheck')}
+            value={settings()?.duplicateCheckEnabled ? t('common.enable') : t('common.off')}
             last
           />
         </div>

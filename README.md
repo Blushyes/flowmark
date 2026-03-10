@@ -10,6 +10,7 @@ FlowMark is a browser extension that recommends a better bookmark folder and tit
 - Shadow DOM floating pill UI on the page
 - Typed messaging via `@webext-core/messaging`
 - Works with any OpenAI-compatible endpoint through Vercel AI SDK
+- Duplicate bookmark detection and merge prompt
 - English and Simplified Chinese UI
 
 ## How it works
@@ -87,6 +88,7 @@ Optional host permissions:
 
 Implemented:
 
+- duplicate bookmark detection and merge prompt
 - smart bookmark recommendation
 - folder + title suggestion
 - accept / reject / auto-accept flow

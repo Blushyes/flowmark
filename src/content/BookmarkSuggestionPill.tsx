@@ -2,7 +2,12 @@ import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-j
 
 import { createTranslator } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
-import type { BookmarkSuggestionUpdatePayload, Locale } from '@/src/shared/types';
+import type {
+  BookmarkSuggestionUpdatePayload,
+  DuplicateBookmarkAction,
+  DuplicateBookmarkMatch,
+  Locale,
+} from '@/src/shared/types';
 
 type Props = {
   payload: BookmarkSuggestionUpdatePayload;
@@ -12,6 +17,7 @@ type Props = {
 
 const EXIT_ANIMATION_MS = 240;
 const ERROR_AUTO_CLOSE_MS = 4000;
+const DUPLICATE_AUTO_CLOSE_MS = 8000;
 
 export function BookmarkSuggestionPill(props: Props) {
   const [exiting, setExiting] = createSignal(false);
@@ -22,16 +28,12 @@ export function BookmarkSuggestionPill(props: Props) {
   const isLoading = createMemo(() => kind() === 'loading');
   const isReady = createMemo(() => kind() === 'ready');
   const isError = createMemo(() => kind() === 'error');
-  const readyPayload = createMemo(() =>
-    props.payload.kind === 'ready' ? props.payload : null,
-  );
-  const errorPayload = createMemo(() =>
-    props.payload.kind === 'error' ? props.payload : null,
-  );
-  const canOpenOptions = createMemo(() => {
-    const payload = errorPayload();
-    return payload?.canOpenOptions ?? false;
-  });
+  const isDuplicate = createMemo(() => kind() === 'duplicate');
+  const readyPayload = createMemo(() => (props.payload.kind === 'ready' ? props.payload : null));
+  const errorPayload = createMemo(() => (props.payload.kind === 'error' ? props.payload : null));
+  const duplicatePayload = createMemo(() => (props.payload.kind === 'duplicate' ? props.payload : null));
+  const firstDuplicate = createMemo<DuplicateBookmarkMatch | null>(() => duplicatePayload()?.matches[0] ?? null);
+  const canOpenOptions = createMemo(() => errorPayload()?.canOpenOptions ?? false);
   const translator = createMemo(() => createTranslator(props.locale));
 
   const confidencePercent = createMemo(() => {
@@ -80,11 +82,33 @@ export function BookmarkSuggestionPill(props: Props) {
     void messaging.sendMessage('openOptions');
   };
 
+  const handleDuplicateAction = (action: DuplicateBookmarkAction, targetBookmarkId?: string) => {
+    const payload = duplicatePayload();
+    if (!payload) return;
+    closeWithAnimation(() => {
+      void messaging.sendMessage('resolveDuplicateBookmark', {
+        bookmarkId: payload.bookmarkId,
+        action,
+        targetBookmarkId,
+      });
+    });
+  };
+
+  const handleDismissDuplicate = () => {
+    const payload = duplicatePayload();
+    if (!payload) return;
+    closeWithAnimation(() => {
+      void messaging.sendMessage('dismissDuplicateBookmark', {
+        bookmarkId: payload.bookmarkId,
+      });
+    });
+  };
+
   createEffect(() => {
     if (!isReady()) return;
     if (props.payload.kind !== 'ready') return;
-
     if (!props.payload.ui.autoAcceptEnabled) return;
+
     const total = Math.max(0, Math.trunc(props.payload.ui.autoAcceptSeconds));
     if (total <= 0) return;
 
@@ -114,11 +138,18 @@ export function BookmarkSuggestionPill(props: Props) {
     onCleanup(() => window.clearTimeout(timerId));
   });
 
+  createEffect(() => {
+    if (!isDuplicate()) return;
+    const timerId = window.setTimeout(handleDismissDuplicate, DUPLICATE_AUTO_CLOSE_MS);
+    onCleanup(() => window.clearTimeout(timerId));
+  });
+
   return (
-    <div class="pointer-events-auto">
+    <div class="pointer-events-auto max-w-[560px]">
       <div
         class={[
-          'flex items-center gap-3 rounded-full border border-slate-100 bg-white px-4 py-3 font-sans shadow-md',
+          'flex items-center gap-3 border border-slate-100 bg-white px-4 py-3 font-sans shadow-md',
+          isDuplicate() ? 'rounded-3xl' : 'rounded-full',
           exiting() ? 'flowmark-animate-out' : 'flowmark-animate-in',
           isError() ? 'flowmark-error-state' : '',
         ]
@@ -128,10 +159,13 @@ export function BookmarkSuggestionPill(props: Props) {
         <div
           class={[
             'flex h-10 w-10 flex-none items-center justify-center rounded-full',
-            isError() ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600',
+            isError() ? 'bg-red-100 text-red-600' : isDuplicate() ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-600',
           ].join(' ')}
         >
-          <Show when={!isLoading() && !isError()}>
+          <Show when={isDuplicate()}>
+            <DuplicateIcon />
+          </Show>
+          <Show when={!isLoading() && !isError() && !isDuplicate()}>
             <BookmarkIcon />
           </Show>
           <Show when={isLoading() && !isError()}>
@@ -144,7 +178,7 @@ export function BookmarkSuggestionPill(props: Props) {
 
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 overflow-visible">
-            <Show when={!isError()}>
+            <Show when={!isError() && !isDuplicate()}>
               <FolderIcon />
             </Show>
             <Show when={readyPayload()}>
@@ -157,6 +191,11 @@ export function BookmarkSuggestionPill(props: Props) {
             <Show when={props.payload.kind === 'loading'}>
               <span class="truncate text-sm font-medium text-slate-800">
                 {translator().t('content.smartRecommendation')}
+              </span>
+            </Show>
+            <Show when={duplicatePayload()}>
+              <span class="truncate text-sm font-medium text-amber-800">
+                {translator().t('content.duplicateDetected')}
               </span>
             </Show>
             <Show when={errorPayload()}>
@@ -172,13 +211,26 @@ export function BookmarkSuggestionPill(props: Props) {
           </div>
 
           <div class="mt-0.5 truncate text-sm text-slate-500" title={props.payload.title}>
-            <Show when={!isError()}>
+            <Show when={!isError() && !isDuplicate()}>
               {props.payload.title || translator().t('common.untitled')}
             </Show>
             <Show when={isError()}>
               <span class="text-red-500">{translator().t('content.tryBookmarkingAgain')}</span>
             </Show>
           </div>
+
+          <Show when={firstDuplicate()}>
+            {(match) => (
+              <div class="mt-1 min-w-0">
+                <div class="truncate text-sm font-medium text-slate-800" title={match().title}>
+                  {translator().t('content.alreadyBookmarked')}: {match().title || translator().t('common.untitled')}
+                </div>
+                <div class="truncate text-xs text-slate-500" title={match().folderPath}>
+                  {match().folderPath}
+                </div>
+              </div>
+            )}
+          </Show>
         </div>
 
         <div class="flex flex-none items-center gap-2">
@@ -220,6 +272,41 @@ export function BookmarkSuggestionPill(props: Props) {
                 <span class="absolute text-xs font-bold text-emerald-800">{secondsLeft()}</span>
               </Show>
             </button>
+          </Show>
+
+          <Show when={duplicatePayload()}>
+            {(payload) => (
+              <div class="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  class="flex h-8 items-center justify-center rounded-full bg-slate-100 px-3 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                  onClick={handleDismissDuplicate}
+                >
+                  {translator().t('content.keepNew')}
+                </button>
+                <button
+                  type="button"
+                  class="flex h-8 items-center justify-center rounded-full bg-red-100 px-3 text-xs font-medium text-red-700 hover:bg-red-200"
+                  onClick={() => handleDuplicateAction('delete_new')}
+                >
+                  {translator().t('content.deleteNew')}
+                </button>
+                <button
+                  type="button"
+                  class="flex h-8 items-center justify-center rounded-full bg-slate-100 px-3 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                  onClick={() => handleDuplicateAction('open_existing', payload().matches[0]?.id)}
+                >
+                  {translator().t('content.openExisting')}
+                </button>
+                <button
+                  type="button"
+                  class="flex h-8 items-center justify-center rounded-full bg-amber-100 px-3 text-xs font-medium text-amber-800 hover:bg-amber-200"
+                  onClick={() => handleDuplicateAction('move_new_to_existing_folder', payload().matches[0]?.id)}
+                >
+                  {translator().t('content.moveToExistingFolder')}
+                </button>
+              </div>
+            )}
           </Show>
 
           <Show when={canOpenOptions()}>
@@ -319,6 +406,25 @@ function ErrorIcon() {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function DuplicateIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M8 8h11v11" />
+      <path d="M16 8H5v11" />
     </svg>
   );
 }

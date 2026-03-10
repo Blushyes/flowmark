@@ -180,6 +180,12 @@ export default function App() {
                     onInput={(checked) => update('enabled', checked)}
                   />
                   <ToggleRow
+                    label={t('options.duplicateCheckLabel')}
+                    description={t('options.duplicateCheckDescription')}
+                    checked={current().duplicateCheckEnabled}
+                    onInput={(checked) => update('duplicateCheckEnabled', checked)}
+                  />
+                  <ToggleRow
                     label={t('options.autoAcceptLabel')}
                     description={t('options.autoAcceptDescription')}
                     checked={current().autoAcceptEnabled}

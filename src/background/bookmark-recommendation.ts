@@ -10,6 +10,8 @@ import type {
   BookmarkSuggestion,
   BookmarkSuggestionUiConfig,
   BookmarkSuggestionUpdatePayload,
+  DuplicateBookmarkAction,
+  DuplicateBookmarkMatch,
   FlowmarkSettings,
   PageContent,
 } from '@/src/shared/types';
@@ -18,6 +20,8 @@ type BookmarkTreeNode = {
   id: string;
   title: string;
   url?: string | undefined;
+  children?: BookmarkTreeNode[] | undefined;
+  parentId?: string | undefined;
 };
 
 type PendingBookmark = {
@@ -25,15 +29,16 @@ type PendingBookmark = {
   url: string;
   originalTitle: string;
   tabId: number;
-  createdAt: number;
   pageContentPromise: Promise<PageContent>;
 };
 
 const PENDING_CONFIRM_DELAY_MS = 1500;
 const APPLY_SUPPRESS_TTL_MS = 8000;
+const DUPLICATE_ACTION_SUPPRESS_TTL_MS = 4000;
 const MAX_FOLDER_PATHS = 300;
 const MAX_FOLDER_DEPTH = 4;
 const MAX_HEADINGS = 8;
+const MAX_DUPLICATE_MATCHES = 3;
 
 const suggestionSchema = z
   .object({
@@ -51,12 +56,10 @@ export function initBookmarkRecommendation(): void {
   let draining = false;
 
   browser.bookmarks.onCreated.addListener(async (id, node) => {
-    // Only handle actual bookmark URLs (ignore folders).
     if (!node.url) return;
 
     const settings = await getSettings();
     if (!settings.enabled) return;
-
     if (isSuppressed(id, suppressUntil)) return;
 
     const tabId = await getActiveTabId();
@@ -67,7 +70,6 @@ export function initBookmarkRecommendation(): void {
       url: node.url,
       originalTitle: node.title ?? '',
       tabId,
-      createdAt: Date.now(),
       pageContentPromise: fetchPageContent(tabId, settings, node.url),
     });
 
@@ -89,8 +91,22 @@ export function initBookmarkRecommendation(): void {
   });
 
   messaging.onMessage('rejectBookmarkSuggestion', ({ data }) => {
-    // Best-effort: if the user rejected, suppress reprocessing for a short period.
     suppressUntil.set(data.bookmarkId, Date.now() + 2_000);
+  });
+
+  messaging.onMessage('resolveDuplicateBookmark', async ({ data }) => {
+    pending.delete(data.bookmarkId);
+    suppressUntil.set(data.bookmarkId, Date.now() + DUPLICATE_ACTION_SUPPRESS_TTL_MS);
+    await resolveDuplicateBookmark(data.bookmarkId, data.action, data.targetBookmarkId);
+  });
+
+  messaging.onMessage('dismissDuplicateBookmark', ({ data }) => {
+    pending.delete(data.bookmarkId);
+    suppressUntil.set(data.bookmarkId, Date.now() + DUPLICATE_ACTION_SUPPRESS_TTL_MS);
+  });
+
+  messaging.onMessage('openBookmark', async ({ data }) => {
+    await openBookmarkById(data.bookmarkId);
   });
 
   messaging.onMessage('openOptions', async () => {
@@ -116,10 +132,26 @@ export function initBookmarkRecommendation(): void {
 
         const settings = await getSettings();
         if (!settings.enabled) continue;
+        if (isSuppressed(bookmarkId, suppressUntil)) continue;
 
         const ui = toUiConfig(settings);
         const locale = await getCurrentLocale(settings);
         const { t } = createTranslator(locale);
+
+        if (settings.duplicateCheckEnabled) {
+          const duplicates = await detectDuplicateBookmarks(bookmarkId, job.url, t('common.bookmarksBar'), t('common.untitled'));
+          if (duplicates.length > 0) {
+            void sendUiUpdate(job.tabId, {
+              kind: 'duplicate',
+              bookmarkId,
+              url: job.url,
+              title: job.originalTitle || t('common.bookmark'),
+              matches: duplicates,
+              ui,
+            });
+            continue;
+          }
+        }
 
         const configError = await getAiConfigError(settings, t);
         if (configError) {
@@ -201,7 +233,7 @@ async function sendUiUpdate(tabId: number, payload: BookmarkSuggestionUpdatePayl
   try {
     await messaging.sendMessage('bookmarkSuggestionUpdate', payload, tabId);
   } catch {
-    // If there's no content script in this tab (or it's a restricted URL), silently ignore.
+    // Ignore tabs without a mounted content script.
   }
 }
 
@@ -214,12 +246,11 @@ function toUiConfig(settings: FlowmarkSettings): BookmarkSuggestionUiConfig {
 
 async function fetchPageContent(tabId: number, settings: FlowmarkSettings, url: string): Promise<PageContent> {
   try {
-    const response = await messaging.sendMessage(
+    return await messaging.sendMessage(
       'getPageContent',
       { includeText: settings.sendPageText, maxChars: settings.maxPageChars },
       tabId,
     );
-    return response;
   } catch {
     return {
       url,
@@ -253,12 +284,10 @@ async function collectFolderPaths(): Promise<string[]> {
 
   const rootChildren = await browser.bookmarks.getChildren(barId);
   const paths: string[] = [];
-
   const stack: Array<{ node: BookmarkTreeNode; path: string; depth: number }> = [];
+
   for (const child of rootChildren) {
-    if (!child.url) {
-      stack.push({ node: child, path: child.title, depth: 1 });
-    }
+    if (!child.url) stack.push({ node: child, path: child.title, depth: 1 });
   }
 
   while (stack.length > 0 && paths.length < MAX_FOLDER_PATHS) {
@@ -266,8 +295,8 @@ async function collectFolderPaths(): Promise<string[]> {
     if (!item) break;
 
     paths.push(item.path);
-
     if (item.depth >= MAX_FOLDER_DEPTH) continue;
+
     const children = await browser.bookmarks.getChildren(item.node.id);
     for (const child of children) {
       if (child.url) continue;
@@ -282,6 +311,86 @@ async function collectFolderPaths(): Promise<string[]> {
   }
 
   return paths.slice(0, MAX_FOLDER_PATHS);
+}
+
+async function detectDuplicateBookmarks(
+  bookmarkId: string,
+  url: string,
+  bookmarksBarLabel: string,
+  untitledLabel: string,
+): Promise<DuplicateBookmarkMatch[]> {
+  const normalizedTarget = normalizeBookmarkUrl(url);
+  if (!normalizedTarget) return [];
+
+  const tree = await browser.bookmarks.getTree();
+  const root = tree[0];
+  const bookmarksBarId = root?.children?.[0]?.id ?? null;
+  const matches: Array<DuplicateBookmarkMatch & { depth: number }> = [];
+
+  for (const child of root?.children ?? []) {
+    if (child.id === bookmarksBarId) {
+      for (const grandchild of child.children ?? []) {
+        collectDuplicateMatches(grandchild, [], normalizedTarget, bookmarkId, matches, bookmarksBarLabel, untitledLabel);
+      }
+      continue;
+    }
+
+    collectDuplicateMatches(child, [], normalizedTarget, bookmarkId, matches, bookmarksBarLabel, untitledLabel);
+  }
+
+  return matches
+    .sort((a, b) => a.depth - b.depth || a.folderPath.localeCompare(b.folderPath) || a.title.localeCompare(b.title))
+    .slice(0, MAX_DUPLICATE_MATCHES)
+    .map(({ depth: _depth, ...match }) => match);
+}
+
+function collectDuplicateMatches(
+  node: BookmarkTreeNode,
+  folderPathParts: string[],
+  normalizedTarget: string,
+  currentBookmarkId: string,
+  matches: Array<DuplicateBookmarkMatch & { depth: number }>,
+  bookmarksBarLabel: string,
+  untitledLabel: string,
+): void {
+  if (node.url) {
+    const normalizedNodeUrl = normalizeBookmarkUrl(node.url);
+    if (node.id !== currentBookmarkId && normalizedNodeUrl === normalizedTarget) {
+      const relativeParts = folderPathParts.filter((part) => part.length > 0);
+      matches.push({
+        id: node.id,
+        title: trimTitle(node.title) || untitledLabel,
+        url: node.url,
+        folderPath: relativeParts.join('-') || bookmarksBarLabel,
+        depth: relativeParts.length,
+      });
+    }
+    return;
+  }
+
+  const nextParts = node.title ? [...folderPathParts, trimTitle(node.title)] : [...folderPathParts];
+  for (const child of node.children ?? []) {
+    collectDuplicateMatches(child, nextParts, normalizedTarget, currentBookmarkId, matches, bookmarksBarLabel, untitledLabel);
+  }
+}
+
+function normalizeBookmarkUrl(input: string): string | null {
+  try {
+    const url = new URL(input);
+    url.hash = '';
+    url.protocol = url.protocol.toLowerCase();
+    url.hostname = url.hostname.toLowerCase();
+    if (url.pathname.length > 1) {
+      url.pathname = url.pathname.replace(/\/+$/, '');
+    }
+    return `${url.origin}${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
+}
+
+function trimTitle(title: string | undefined): string {
+  return title?.trim() ?? '';
 }
 
 async function getAiConfigError(
@@ -331,7 +440,6 @@ async function getSuggestion(
   });
 
   const model = provider.chatModel(settings.aiModel);
-
   const pageTitle = input.pageContent.title || input.originalTitle;
   const headings = input.pageContent.headings.slice(0, MAX_HEADINGS);
 
@@ -356,7 +464,6 @@ async function getSuggestion(
   try {
     const prompt = promptParts.join('\n\n');
 
-    // Prefer structured output when supported.
     try {
       const result = await generateText({
         model,
@@ -372,8 +479,7 @@ async function getSuggestion(
       const parsed = suggestionSchema.safeParse(result.output);
       if (parsed.success) return normalizeSuggestion(parsed.data, input.untitledFallback);
     } catch {
-      // Fall back to plain JSON parsing for OpenAI-compatible providers that don't
-      // support structured outputs.
+      // Fall back to plain JSON parsing for providers without structured outputs.
     }
 
     const { text } = await generateText({
@@ -399,8 +505,8 @@ async function getSuggestion(
 function normalizeSuggestion(value: BookmarkSuggestion, untitledFallback: string): BookmarkSuggestion {
   const folder = value.suggestedFolder
     .split(/[-/]+/g)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
     .slice(0, 4)
     .join('-');
   const title = value.title.trim().slice(0, 160);
@@ -431,26 +537,56 @@ function extractFirstJsonObject(text: string): unknown | null {
 async function findOrCreateFolderPath(bookmarksBarId: string, folderPath: string): Promise<string> {
   const parts = folderPath
     .split('-')
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 
   if (parts.length === 0) return bookmarksBarId;
 
   let currentParentId = bookmarksBarId;
   for (const part of parts) {
     const children = await browser.bookmarks.getChildren(currentParentId);
-    const existing = children.find((c) => !c.url && c.title === part);
+    const existing = children.find((child) => !child.url && child.title === part);
     if (existing) {
       currentParentId = existing.id;
       continue;
     }
 
-    const created = await browser.bookmarks.create({
-      parentId: currentParentId,
-      title: part,
-    });
+    const created = await browser.bookmarks.create({ parentId: currentParentId, title: part });
     currentParentId = created.id;
   }
 
   return currentParentId;
+}
+
+async function resolveDuplicateBookmark(
+  bookmarkId: string,
+  action: DuplicateBookmarkAction,
+  targetBookmarkId?: string,
+): Promise<void> {
+  switch (action) {
+    case 'keep_new':
+      return;
+    case 'delete_new':
+      if (await bookmarkExists(bookmarkId)) {
+        await browser.bookmarks.remove(bookmarkId);
+      }
+      return;
+    case 'move_new_to_existing_folder': {
+      if (!targetBookmarkId) return;
+      const [target] = await browser.bookmarks.get(targetBookmarkId);
+      if (!target?.parentId) return;
+      await browser.bookmarks.move(bookmarkId, { parentId: target.parentId });
+      return;
+    }
+    case 'open_existing':
+      if (!targetBookmarkId) return;
+      await openBookmarkById(targetBookmarkId);
+      return;
+  }
+}
+
+async function openBookmarkById(bookmarkId: string): Promise<void> {
+  const [bookmark] = await browser.bookmarks.get(bookmarkId);
+  if (!bookmark?.url) return;
+  await browser.tabs.create({ url: bookmark.url });
 }

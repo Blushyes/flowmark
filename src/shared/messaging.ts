@@ -3,9 +3,12 @@ import { defineExtensionMessaging } from '@webext-core/messaging';
 import type {
   ApplyBookmarkSuggestionRequest,
   BookmarkSuggestionUpdatePayload,
+  DismissDuplicateBookmarkRequest,
   GetPageContentRequest,
+  OpenBookmarkRequest,
   PageContent,
   RejectBookmarkSuggestionRequest,
+  ResolveDuplicateBookmarkRequest,
 } from './types';
 
 export interface ProtocolMap {
@@ -13,8 +16,10 @@ export interface ProtocolMap {
   getPageContent(payload: GetPageContentRequest): PageContent;
   applyBookmarkSuggestion(payload: ApplyBookmarkSuggestionRequest): void;
   rejectBookmarkSuggestion(payload: RejectBookmarkSuggestionRequest): void;
+  resolveDuplicateBookmark(payload: ResolveDuplicateBookmarkRequest): void;
+  dismissDuplicateBookmark(payload: DismissDuplicateBookmarkRequest): void;
+  openBookmark(payload: OpenBookmarkRequest): void;
   openOptions(): void;
 }
 
 export const messaging = defineExtensionMessaging<ProtocolMap>();
-
