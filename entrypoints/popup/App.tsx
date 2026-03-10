@@ -91,6 +91,10 @@ export default function App() {
     void openSettingsPage();
   };
 
+  const openGithubRepo = () => {
+    void browser.tabs.create({ url: 'https://github.com/Blushyes/flowmark' });
+  };
+
   const toggleEnabled = async () => {
     const current = settings();
     if (!current) return;
@@ -111,9 +115,20 @@ export default function App() {
             </div>
           </div>
 
-          <Button type="button" variant="secondary" size="sm" onClick={openOptions}>
-            {t('common.settings')}
-          </Button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={t('popup.githubRepo')}
+              title={t('popup.githubRepo')}
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/70"
+              onClick={openGithubRepo}
+            >
+              <GitHubIcon class="h-6 w-6" />
+            </button>
+            <Button type="button" variant="secondary" size="sm" onClick={openOptions}>
+              {t('common.settings')}
+            </Button>
+          </div>
         </div>
 
         <div class="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-3">
@@ -239,4 +254,17 @@ function safeOrigin(baseURL: string, invalidLabel: string): string {
   } catch {
     return invalidLabel;
   }
+}
+
+function GitHubIcon(props: { class?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      class={props.class}
+    >
+      <path d="M12 2C6.48 2 2 6.59 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-1.04-.01-1.88-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.33 9.33 0 0 1 12 6.84c.85 0 1.71.12 2.5.35 1.9-1.33 2.74-1.05 2.74-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.94-2.35 4.8-4.58 5.06.36.32.68.95.68 1.91 0 1.38-.01 2.49-.01 2.83 0 .27.18.59.69.49A10.27 10.27 0 0 0 22 12.25C22 6.59 17.52 2 12 2Z" />
+    </svg>
+  );
 }
