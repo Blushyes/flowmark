@@ -4,3 +4,4 @@ import '~/assets/app.css';
 import App from './App';
 
 render(() => <App />, document.getElementById('root')!);
+

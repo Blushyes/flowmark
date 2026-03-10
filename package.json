@@ -1,8 +1,8 @@
 {
-  "name": "wxt-solid-starter",
-  "description": "manifest.json description",
+  "name": "flowmark",
+  "description": "Flowmark browser extension (open-source edition)",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -15,10 +15,16 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "solid-js": "^1.9.11"
+    "@ai-sdk/openai-compatible": "^2.0.35",
+    "@webext-core/messaging": "^2.3.0",
+    "ai": "^6.0.116",
+    "solid-js": "^1.9.11",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
     "@wxt-dev/module-solid": "^1.1.4",
+    "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "wxt": "^0.20.18"
   }

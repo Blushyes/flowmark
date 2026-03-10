@@ -1,3 +1,5 @@
+import { initBookmarkRecommendation } from '@/src/background/bookmark-recommendation';
+
 export default defineBackground(() => {
-  console.log('Hello background!', { id: browser.runtime.id });
+  initBookmarkRecommendation();
 });
