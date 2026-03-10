@@ -3,11 +3,13 @@ import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js'
 import { Button } from '@/src/components/Button';
 import { getBrowserUiLanguage, resolveLocale, useI18n } from '@/src/shared/i18n';
 import { openSettingsPage } from '@/src/shared/open-settings-page';
+import { getBookmarkSummaryByNormalizedUrl } from '@/src/shared/bookmark-summary';
 import { getSettings, setSettings } from '@/src/shared/settings';
-import type { FlowmarkSettings } from '@/src/shared/types';
+import type { BookmarkSummaryRecord, FlowmarkSettings } from '@/src/shared/types';
 
 export default function App() {
   const [settings, setLocalSettings] = createSignal<FlowmarkSettings | null>(null);
+  const [summaryRecord, setSummaryRecord] = createSignal<BookmarkSummaryRecord | null>(null);
 
   const currentLocale = createMemo(() =>
     resolveLocale(settings()?.localeOverride ?? 'auto', getBrowserUiLanguage()),
@@ -22,6 +24,13 @@ export default function App() {
     void (async () => {
       const current = await getSettings();
       setLocalSettings(current);
+
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      const url = tab?.url;
+      if (!url) return;
+
+      const summary = await getBookmarkSummaryByNormalizedUrl(url);
+      setSummaryRecord(summary);
     })();
   });
 
@@ -98,6 +107,25 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        <Show when={summaryRecord()}>
+          {(record) => (
+            <div class="mt-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+                {t('popup.savedSummary')}
+              </div>
+              <div class="mt-2 truncate text-sm font-semibold text-slate-900" title={record().title}>
+                {record().title}
+              </div>
+              <div class="mt-2 text-sm leading-6 text-slate-700">
+                {record().summary}
+              </div>
+              <div class="mt-2 truncate text-xs text-slate-500" title={record().folderPath}>
+                {record().folderPath}
+              </div>
+            </div>
+          )}
+        </Show>
 
         <div class="mt-auto pt-4">
           <Button type="button" block onClick={openOptions}>

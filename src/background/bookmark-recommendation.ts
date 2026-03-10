@@ -2,6 +2,12 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
+import {
+  getBookmarkSummary,
+  normalizeBookmarkUrl,
+  removeBookmarkSummary,
+  setBookmarkSummary,
+} from '@/src/shared/bookmark-summary';
 import { createTranslator, getCurrentLocale } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
 import { openSettingsPage } from '@/src/shared/open-settings-page';
@@ -10,9 +16,11 @@ import type {
   BookmarkSuggestion,
   BookmarkSuggestionUiConfig,
   BookmarkSuggestionUpdatePayload,
+  BookmarkSummaryRecord,
   DuplicateBookmarkAction,
   DuplicateBookmarkMatch,
   FlowmarkSettings,
+  Locale,
   PageContent,
 } from '@/src/shared/types';
 
@@ -45,6 +53,7 @@ const suggestionSchema = z
     suggestedFolder: z.string(),
     title: z.string(),
     confidence: z.number().min(0).max(1),
+    summary: z.string(),
   })
   .strict();
 
@@ -79,6 +88,19 @@ export function initBookmarkRecommendation(): void {
     }, PENDING_CONFIRM_DELAY_MS);
   });
 
+  browser.bookmarks.onRemoved.addListener((bookmarkId) => {
+    pending.delete(bookmarkId);
+    void removeBookmarkSummary(bookmarkId);
+  });
+
+  browser.bookmarks.onChanged.addListener((bookmarkId) => {
+    void syncBookmarkSummaryRecord(bookmarkId);
+  });
+
+  browser.bookmarks.onMoved.addListener((bookmarkId) => {
+    void syncBookmarkSummaryRecord(bookmarkId);
+  });
+
   messaging.onMessage('applyBookmarkSuggestion', async ({ data }) => {
     suppressUntil.set(data.bookmarkId, Date.now() + APPLY_SUPPRESS_TTL_MS);
 
@@ -87,7 +109,21 @@ export function initBookmarkRecommendation(): void {
 
     const parentId = await findOrCreateFolderPath(barId, data.suggestedFolder);
     await browser.bookmarks.move(data.bookmarkId, { parentId });
-    await browser.bookmarks.update(data.bookmarkId, { title: data.title });
+    const updatedBookmark = await browser.bookmarks.update(data.bookmarkId, { title: data.title });
+
+    const settings = await getSettings();
+    if (!settings.summaryEnabled || !updatedBookmark.url) return;
+
+    const summary = data.summary.trim();
+    if (!summary) return;
+
+    await upsertBookmarkSummary({
+      bookmarkId: updatedBookmark.id,
+      url: updatedBookmark.url,
+      title: updatedBookmark.title,
+      folderPath: data.suggestedFolder || (await getBookmarksBarLabel(settings)),
+      summary,
+    });
   });
 
   messaging.onMessage('rejectBookmarkSuggestion', ({ data }) => {
@@ -139,7 +175,12 @@ export function initBookmarkRecommendation(): void {
         const { t } = createTranslator(locale);
 
         if (settings.duplicateCheckEnabled) {
-          const duplicates = await detectDuplicateBookmarks(bookmarkId, job.url, t('common.bookmarksBar'), t('common.untitled'));
+          const duplicates = await detectDuplicateBookmarks(
+            bookmarkId,
+            job.url,
+            t('common.bookmarksBar'),
+            t('common.untitled'),
+          );
           if (duplicates.length > 0) {
             void sendUiUpdate(job.tabId, {
               kind: 'duplicate',
@@ -181,6 +222,7 @@ export function initBookmarkRecommendation(): void {
         ]);
 
         const suggestion = await getSuggestion(settings, {
+          locale,
           url: job.url,
           originalTitle: job.originalTitle,
           pageContent,
@@ -276,6 +318,11 @@ async function getBookmarksBarId(): Promise<string | null> {
   const root = tree[0];
   const bar = root?.children?.[0];
   return bar?.id ?? null;
+}
+
+async function getBookmarksBarLabel(settings?: FlowmarkSettings): Promise<string> {
+  const locale = await getCurrentLocale(settings);
+  return createTranslator(locale).t('common.bookmarksBar');
 }
 
 async function collectFolderPaths(): Promise<string[]> {
@@ -374,21 +421,6 @@ function collectDuplicateMatches(
   }
 }
 
-function normalizeBookmarkUrl(input: string): string | null {
-  try {
-    const url = new URL(input);
-    url.hash = '';
-    url.protocol = url.protocol.toLowerCase();
-    url.hostname = url.hostname.toLowerCase();
-    if (url.pathname.length > 1) {
-      url.pathname = url.pathname.replace(/\/+$/, '');
-    }
-    return `${url.origin}${url.pathname}${url.search}`;
-  } catch {
-    return null;
-  }
-}
-
 function trimTitle(title: string | undefined): string {
   return title?.trim() ?? '';
 }
@@ -426,6 +458,7 @@ async function getAiConfigError(
 async function getSuggestion(
   settings: FlowmarkSettings,
   input: {
+    locale: Locale;
     url: string;
     originalTitle: string;
     pageContent: PageContent;
@@ -443,14 +476,19 @@ async function getSuggestion(
   const pageTitle = input.pageContent.title || input.originalTitle;
   const headings = input.pageContent.headings.slice(0, MAX_HEADINGS);
 
+  const outputLanguage = input.locale === 'zh-CN' ? 'Simplified Chinese' : 'English';
+
   const system =
-    'You are a bookmark organizer. Return a JSON object with a suggested folder path and a short improved title.' +
+    'You are a bookmark organizer. Return a JSON object with a suggested folder path, a short improved title, and a one-sentence summary.' +
     '\nRules:' +
     '\n- suggestedFolder must be a "-" separated relative path (do NOT include the bookmarks bar root name).' +
     '\n- Keep suggestedFolder to at most 4 segments.' +
     '\n- Prefer choosing an existing folder path from the provided list.' +
     '\n- title must be short, readable, and not include extra quotes.' +
-    '\n- confidence must be a number between 0 and 1.';
+    '\n- summary must be exactly one sentence, plain text only, and explain why this page is worth saving or what it is mainly about.' +
+    '\n- summary must not repeat the title verbatim.' +
+    '\n- confidence must be a number between 0 and 1.' +
+    `\n- title and summary must be written in ${outputLanguage}.`;
 
   const promptParts: string[] = [];
   promptParts.push(`URL: ${input.url}`);
@@ -470,14 +508,14 @@ async function getSuggestion(
         system,
         prompt,
         temperature: 0.2,
-        maxOutputTokens: 200,
+        maxOutputTokens: 260,
         output: Output.object({
           schema: suggestionSchema,
         }),
       });
 
       const parsed = suggestionSchema.safeParse(result.output);
-      if (parsed.success) return normalizeSuggestion(parsed.data, input.untitledFallback);
+      if (parsed.success) return normalizeSuggestion(parsed.data, input.untitledFallback, settings.summaryEnabled);
     } catch {
       // Fall back to plain JSON parsing for providers without structured outputs.
     }
@@ -487,7 +525,7 @@ async function getSuggestion(
       system: `${system}\n\nReturn ONLY valid JSON.`,
       prompt,
       temperature: 0.2,
-      maxOutputTokens: 220,
+      maxOutputTokens: 280,
     });
 
     const json = extractFirstJsonObject(text);
@@ -496,13 +534,17 @@ async function getSuggestion(
     const parsed = suggestionSchema.safeParse(json);
     if (!parsed.success) return null;
 
-    return normalizeSuggestion(parsed.data, input.untitledFallback);
+    return normalizeSuggestion(parsed.data, input.untitledFallback, settings.summaryEnabled);
   } catch {
     return null;
   }
 }
 
-function normalizeSuggestion(value: BookmarkSuggestion, untitledFallback: string): BookmarkSuggestion {
+function normalizeSuggestion(
+  value: BookmarkSuggestion,
+  untitledFallback: string,
+  summaryEnabled: boolean,
+): BookmarkSuggestion {
   const folder = value.suggestedFolder
     .split(/[-/]+/g)
     .map((part) => part.trim())
@@ -513,12 +555,27 @@ function normalizeSuggestion(value: BookmarkSuggestion, untitledFallback: string
   const confidence = Number.isFinite(value.confidence)
     ? Math.min(1, Math.max(0, value.confidence))
     : 0;
+  const summary = summaryEnabled ? normalizeSummary(value.summary, title || untitledFallback) : '';
 
   return {
     suggestedFolder: folder,
     title: title.length > 0 ? title : untitledFallback,
     confidence,
+    summary,
   };
+}
+
+function normalizeSummary(summary: string, title: string): string {
+  const cleaned = summary
+    .replace(/\s+/g, ' ')
+    .replace(/^[-*\d.)\s]+/, '')
+    .trim()
+    .slice(0, 240);
+
+  if (!cleaned) return '';
+  if (cleaned.toLowerCase() === title.trim().toLowerCase()) return '';
+  if (/[.!?。！？]$/.test(cleaned)) return cleaned;
+  return `${cleaned}.`;
 }
 
 function extractFirstJsonObject(text: string): unknown | null {
@@ -589,4 +646,75 @@ async function openBookmarkById(bookmarkId: string): Promise<void> {
   const [bookmark] = await browser.bookmarks.get(bookmarkId);
   if (!bookmark?.url) return;
   await browser.tabs.create({ url: bookmark.url });
+}
+
+async function upsertBookmarkSummary(input: {
+  bookmarkId: string;
+  url: string;
+  title: string;
+  folderPath: string;
+  summary: string;
+}): Promise<void> {
+  const normalizedUrl = normalizeBookmarkUrl(input.url);
+  if (!normalizedUrl) return;
+
+  const existing = await getBookmarkSummary(input.bookmarkId);
+  const now = Date.now();
+  const record: BookmarkSummaryRecord = {
+    bookmarkId: input.bookmarkId,
+    url: input.url,
+    normalizedUrl,
+    title: input.title,
+    folderPath: input.folderPath,
+    summary: input.summary,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  await setBookmarkSummary(record);
+}
+
+async function syncBookmarkSummaryRecord(bookmarkId: string): Promise<void> {
+  const record = await getBookmarkSummary(bookmarkId);
+  if (!record) return;
+
+  try {
+    const [bookmark] = await browser.bookmarks.get(bookmarkId);
+    if (!bookmark?.url) {
+      await removeBookmarkSummary(bookmarkId);
+      return;
+    }
+
+    const settings = await getSettings();
+    const folderPath = await getRelativeFolderPath(bookmark.parentId ?? null, settings);
+    await upsertBookmarkSummary({
+      bookmarkId,
+      url: bookmark.url,
+      title: bookmark.title,
+      folderPath,
+      summary: record.summary,
+    });
+  } catch {
+    await removeBookmarkSummary(bookmarkId);
+  }
+}
+
+async function getRelativeFolderPath(parentId: string | null, settings?: FlowmarkSettings): Promise<string> {
+  const bookmarksBarId = await getBookmarksBarId();
+  const bookmarksBarLabel = await getBookmarksBarLabel(settings);
+  if (!parentId || !bookmarksBarId || parentId === bookmarksBarId) return bookmarksBarLabel;
+
+  const parts: string[] = [];
+  let currentId: string | null = parentId;
+
+  while (currentId && currentId !== bookmarksBarId) {
+    const nodes: BookmarkTreeNode[] = await browser.bookmarks.get(currentId);
+    const node: BookmarkTreeNode | undefined = nodes[0];
+    if (!node) break;
+    const title = trimTitle(node.title);
+    if (title) parts.unshift(title);
+    currentId = node.parentId ?? null;
+  }
+
+  return parts.join('-') || bookmarksBarLabel;
 }

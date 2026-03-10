@@ -67,6 +67,7 @@ export function BookmarkSuggestionPill(props: Props) {
         bookmarkId: payload.bookmarkId,
         suggestedFolder: payload.suggestion.suggestedFolder,
         title: payload.suggestion.title,
+        summary: payload.suggestion.summary,
       });
     });
   };

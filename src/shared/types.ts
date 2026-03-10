@@ -4,6 +4,7 @@ export type LocaleOverride = 'auto' | Locale;
 export interface FlowmarkSettings {
   enabled: boolean;
   duplicateCheckEnabled: boolean;
+  summaryEnabled: boolean;
   autoAcceptEnabled: boolean;
   autoAcceptSeconds: number;
   sendPageText: boolean;
@@ -17,6 +18,7 @@ export interface FlowmarkSettings {
 export const DEFAULT_SETTINGS: FlowmarkSettings = {
   enabled: true,
   duplicateCheckEnabled: true,
+  summaryEnabled: true,
   autoAcceptEnabled: true,
   autoAcceptSeconds: 5,
   sendPageText: false,
@@ -44,6 +46,7 @@ export interface BookmarkSuggestion {
   suggestedFolder: string;
   title: string;
   confidence: number;
+  summary: string;
 }
 
 export interface DuplicateBookmarkMatch {
@@ -104,6 +107,7 @@ export interface ApplyBookmarkSuggestionRequest {
   bookmarkId: string;
   suggestedFolder: string;
   title: string;
+  summary: string;
 }
 
 export interface RejectBookmarkSuggestionRequest {
@@ -122,4 +126,15 @@ export interface DismissDuplicateBookmarkRequest {
 
 export interface OpenBookmarkRequest {
   bookmarkId: string;
+}
+
+export interface BookmarkSummaryRecord {
+  bookmarkId: string;
+  url: string;
+  normalizedUrl: string;
+  title: string;
+  folderPath: string;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
 }

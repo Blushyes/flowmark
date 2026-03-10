@@ -49,6 +49,7 @@ const enMessages = defineMessages({
   'popup.statusSetupNeeded': 'Setup needed',
   'popup.statusPermissionMissing': 'Permission missing',
   'popup.toggleRecommendation': 'Toggle recommendation',
+  'popup.savedSummary': 'Saved summary',
 
   'options.documentTitle': 'FlowMark Settings',
   'options.headingTitle': 'FlowMark Settings',
@@ -61,6 +62,8 @@ const enMessages = defineMessages({
   'options.enableRecommendationDescription': 'Show a suggestion pill after saving a bookmark.',
   'options.duplicateCheckLabel': 'Duplicate check',
   'options.duplicateCheckDescription': 'Detect bookmarks with the same normalized URL before asking AI.',
+  'options.summaryLabel': 'Bookmark summary',
+  'options.summaryDescription': 'Generate one sentence about why this page is worth saving.',
   'options.autoAcceptLabel': 'Auto-accept',
   'options.autoAcceptDescription': 'Automatically move or rename after a countdown.',
   'options.autoAcceptSecondsLabel': 'Auto-accept seconds',
@@ -144,6 +147,7 @@ const zhCNMessages: MessageDictionary = {
   'popup.statusSetupNeeded': '需要配置',
   'popup.statusPermissionMissing': '缺少权限',
   'popup.toggleRecommendation': '切换推荐状态',
+  'popup.savedSummary': '已保存摘要',
 
   'options.documentTitle': 'FlowMark 设置',
   'options.headingTitle': 'FlowMark 设置',
@@ -156,6 +160,8 @@ const zhCNMessages: MessageDictionary = {
   'options.enableRecommendationDescription': '收藏后显示推荐提示条。',
   'options.duplicateCheckLabel': '重复检测',
   'options.duplicateCheckDescription': '在请求 AI 之前，先检测规范化 URL 相同的书签。',
+  'options.summaryLabel': '书签摘要',
+  'options.summaryDescription': '额外生成一句话摘要，用来快速回忆这页为什么值得收藏。',
   'options.autoAcceptLabel': '自动接受',
   'options.autoAcceptDescription': '倒计时结束后自动移动或重命名。',
   'options.autoAcceptSecondsLabel': '自动接受秒数',
