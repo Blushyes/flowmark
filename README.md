@@ -31,6 +31,14 @@ Default behavior:
 - max page text: `5000` chars
 - language: follow browser UI language
 
+## Chrome Web Store
+
+Current store listing: [https://chromewebstore.google.com/detail/kbmjedeepcglnmllaklecppgijhgggdg?utm_source=item-share-cb](https://chromewebstore.google.com/detail/kbmjedeepcglnmllaklecppgijhgggdg?utm_source=item-share-cb)
+
+Note:
+- the current Chrome Web Store listing is still the previous legacy version
+- this open-source edition will be submitted for review later
+
 ## Development
 
 ```bash
