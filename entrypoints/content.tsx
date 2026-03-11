@@ -142,12 +142,19 @@ function getPageContent(request: GetPageContentRequest): PageContent {
   const maxChars = Math.max(0, Math.trunc(request.maxChars));
   const text = includeText ? truncateText(document.body?.innerText?.trim() ?? '', maxChars) : null;
 
+  const hasPasswordField = Boolean(document.querySelector('input[type="password"]'));
+  const formFieldCount = document.querySelectorAll('input:not([type="hidden"]), textarea, select').length;
+  const linkCount = document.querySelectorAll('a[href]').length;
+
   return {
     url,
     title,
     description,
     headings,
     text: text && text.length > 0 ? text : null,
+    hasPasswordField,
+    formFieldCount,
+    linkCount,
   };
 }
 

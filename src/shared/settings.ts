@@ -8,6 +8,7 @@ const settingsSchema = z
   .object({
     enabled: z.boolean().optional(),
     duplicateCheckEnabled: z.boolean().optional(),
+    pageQualityFilterEnabled: z.boolean().optional(),
     summaryEnabled: z.boolean().optional(),
     autoAcceptEnabled: z.boolean().optional(),
     autoAcceptSeconds: z.number().int().min(0).max(60).optional(),

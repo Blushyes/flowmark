@@ -186,6 +186,12 @@ export default function App() {
                     onInput={(checked) => update('duplicateCheckEnabled', checked)}
                   />
                   <ToggleRow
+                    label={t('options.pageQualityFilterLabel')}
+                    description={t('options.pageQualityFilterDescription')}
+                    checked={current().pageQualityFilterEnabled}
+                    onInput={(checked) => update('pageQualityFilterEnabled', checked)}
+                  />
+                  <ToggleRow
                     label={t('options.summaryLabel')}
                     description={t('options.summaryDescription')}
                     checked={current().summaryEnabled}

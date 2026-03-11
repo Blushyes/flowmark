@@ -13,6 +13,7 @@ import { messaging } from '@/src/shared/messaging';
 import { openSettingsPage } from '@/src/shared/open-settings-page';
 import { getSettings, toOriginPermissionPattern } from '@/src/shared/settings';
 import type {
+  BookmarkPageQualityReason,
   BookmarkSuggestion,
   BookmarkSuggestionUiConfig,
   BookmarkSuggestionUpdatePayload,
@@ -40,13 +41,21 @@ type PendingBookmark = {
   pageContentPromise: Promise<PageContent>;
 };
 
+type QualityWarning = {
+  reason: BookmarkPageQualityReason;
+  message: string;
+  detail: string;
+};
+
 const PENDING_CONFIRM_DELAY_MS = 1500;
 const APPLY_SUPPRESS_TTL_MS = 8000;
 const DUPLICATE_ACTION_SUPPRESS_TTL_MS = 4000;
+const QUALITY_ACTION_SUPPRESS_TTL_MS = 4000;
 const MAX_FOLDER_PATHS = 300;
 const MAX_FOLDER_DEPTH = 4;
 const MAX_HEADINGS = 8;
 const MAX_DUPLICATE_MATCHES = 3;
+const QUALITY_PAGE_TEXT_CHARS = 3000;
 
 const suggestionSchema = z
   .object({
@@ -61,6 +70,7 @@ export function initBookmarkRecommendation(): void {
   const pending = new Map<string, PendingBookmark>();
   const queue: string[] = [];
   const suppressUntil = new Map<string, number>();
+  const qualityApproved = new Set<string>();
 
   let draining = false;
 
@@ -90,6 +100,7 @@ export function initBookmarkRecommendation(): void {
 
   browser.bookmarks.onRemoved.addListener((bookmarkId) => {
     pending.delete(bookmarkId);
+    qualityApproved.delete(bookmarkId);
     void removeBookmarkSummary(bookmarkId);
   });
 
@@ -132,13 +143,37 @@ export function initBookmarkRecommendation(): void {
 
   messaging.onMessage('resolveDuplicateBookmark', async ({ data }) => {
     pending.delete(data.bookmarkId);
+    qualityApproved.delete(data.bookmarkId);
     suppressUntil.set(data.bookmarkId, Date.now() + DUPLICATE_ACTION_SUPPRESS_TTL_MS);
     await resolveDuplicateBookmark(data.bookmarkId, data.action, data.targetBookmarkId);
   });
 
   messaging.onMessage('dismissDuplicateBookmark', ({ data }) => {
     pending.delete(data.bookmarkId);
+    qualityApproved.delete(data.bookmarkId);
     suppressUntil.set(data.bookmarkId, Date.now() + DUPLICATE_ACTION_SUPPRESS_TTL_MS);
+  });
+
+  messaging.onMessage('continueBookmarkRecommendation', ({ data }) => {
+    if (!pending.has(data.bookmarkId)) return;
+    qualityApproved.add(data.bookmarkId);
+    queue.push(data.bookmarkId);
+    void drainQueue();
+  });
+
+  messaging.onMessage('dismissBookmarkQualityWarning', ({ data }) => {
+    pending.delete(data.bookmarkId);
+    qualityApproved.delete(data.bookmarkId);
+    suppressUntil.set(data.bookmarkId, Date.now() + QUALITY_ACTION_SUPPRESS_TTL_MS);
+  });
+
+  messaging.onMessage('deleteLowQualityBookmark', async ({ data }) => {
+    pending.delete(data.bookmarkId);
+    qualityApproved.delete(data.bookmarkId);
+    suppressUntil.set(data.bookmarkId, Date.now() + QUALITY_ACTION_SUPPRESS_TTL_MS);
+    if (await bookmarkExists(data.bookmarkId)) {
+      await browser.bookmarks.remove(data.bookmarkId);
+    }
   });
 
   messaging.onMessage('openBookmark', async ({ data }) => {
@@ -161,14 +196,24 @@ export function initBookmarkRecommendation(): void {
         const job = pending.get(bookmarkId);
         if (!job) continue;
 
-        pending.delete(bookmarkId);
-
         const stillExists = await bookmarkExists(bookmarkId);
-        if (!stillExists) continue;
+        if (!stillExists) {
+          pending.delete(bookmarkId);
+          qualityApproved.delete(bookmarkId);
+          continue;
+        }
 
         const settings = await getSettings();
-        if (!settings.enabled) continue;
-        if (isSuppressed(bookmarkId, suppressUntil)) continue;
+        if (!settings.enabled) {
+          pending.delete(bookmarkId);
+          qualityApproved.delete(bookmarkId);
+          continue;
+        }
+        if (isSuppressed(bookmarkId, suppressUntil)) {
+          pending.delete(bookmarkId);
+          qualityApproved.delete(bookmarkId);
+          continue;
+        }
 
         const ui = toUiConfig(settings);
         const locale = await getCurrentLocale(settings);
@@ -182,6 +227,8 @@ export function initBookmarkRecommendation(): void {
             t('common.untitled'),
           );
           if (duplicates.length > 0) {
+            pending.delete(bookmarkId);
+            qualityApproved.delete(bookmarkId);
             void sendUiUpdate(job.tabId, {
               kind: 'duplicate',
               bookmarkId,
@@ -193,6 +240,25 @@ export function initBookmarkRecommendation(): void {
             continue;
           }
         }
+
+        const pageContent = await job.pageContentPromise;
+        const skipQualityWarning = qualityApproved.delete(bookmarkId);
+        if (settings.pageQualityFilterEnabled && !skipQualityWarning) {
+          const qualityWarning = detectBookmarkPageQuality(job.url, pageContent, t);
+          if (qualityWarning) {
+            void sendUiUpdate(job.tabId, {
+              kind: 'quality-warning',
+              bookmarkId,
+              url: job.url,
+              title: job.originalTitle || pageContent.title || t('common.bookmark'),
+              quality: qualityWarning,
+              ui,
+            });
+            continue;
+          }
+        }
+
+        pending.delete(bookmarkId);
 
         const configError = await getAiConfigError(settings, t);
         if (configError) {
@@ -216,11 +282,7 @@ export function initBookmarkRecommendation(): void {
           ui,
         });
 
-        const [pageContent, folderPaths] = await Promise.all([
-          job.pageContentPromise,
-          collectFolderPaths(),
-        ]);
-
+        const folderPaths = await collectFolderPaths();
         const suggestion = await getSuggestion(settings, {
           locale,
           url: job.url,
@@ -290,7 +352,10 @@ async function fetchPageContent(tabId: number, settings: FlowmarkSettings, url: 
   try {
     return await messaging.sendMessage(
       'getPageContent',
-      { includeText: settings.sendPageText, maxChars: settings.maxPageChars },
+      {
+        includeText: settings.sendPageText || settings.pageQualityFilterEnabled,
+        maxChars: Math.max(settings.maxPageChars, QUALITY_PAGE_TEXT_CHARS),
+      },
       tabId,
     );
   } catch {
@@ -300,6 +365,9 @@ async function fetchPageContent(tabId: number, settings: FlowmarkSettings, url: 
       description: '',
       headings: [],
       text: null,
+      hasPasswordField: false,
+      formFieldCount: 0,
+      linkCount: 0,
     };
   }
 }
@@ -377,12 +445,28 @@ async function detectDuplicateBookmarks(
   for (const child of root?.children ?? []) {
     if (child.id === bookmarksBarId) {
       for (const grandchild of child.children ?? []) {
-        collectDuplicateMatches(grandchild, [], normalizedTarget, bookmarkId, matches, bookmarksBarLabel, untitledLabel);
+        collectDuplicateMatches(
+          grandchild,
+          [],
+          normalizedTarget,
+          bookmarkId,
+          matches,
+          bookmarksBarLabel,
+          untitledLabel,
+        );
       }
       continue;
     }
 
-    collectDuplicateMatches(child, [], normalizedTarget, bookmarkId, matches, bookmarksBarLabel, untitledLabel);
+    collectDuplicateMatches(
+      child,
+      [],
+      normalizedTarget,
+      bookmarkId,
+      matches,
+      bookmarksBarLabel,
+      untitledLabel,
+    );
   }
 
   return matches
@@ -418,6 +502,77 @@ function collectDuplicateMatches(
   const nextParts = node.title ? [...folderPathParts, trimTitle(node.title)] : [...folderPathParts];
   for (const child of node.children ?? []) {
     collectDuplicateMatches(child, nextParts, normalizedTarget, currentBookmarkId, matches, bookmarksBarLabel, untitledLabel);
+  }
+}
+
+function detectBookmarkPageQuality(
+  url: string,
+  pageContent: PageContent,
+  t: (key:
+    | 'content.pageMayNotBeWorthSaving'
+    | 'content.bookmarkArticleInstead'
+    | 'content.loginPageDetected'
+    | 'content.searchResultsDetected'
+    | 'content.lowInfoPageDetected') => string,
+): QualityWarning | null {
+  const normalizedUrl = normalizeBookmarkUrl(url) ?? url;
+  const lowerUrl = normalizedUrl.toLowerCase();
+  const lowerTitle = pageContent.title.toLowerCase();
+  const lowerDescription = pageContent.description.toLowerCase();
+  const lowerHeadings = pageContent.headings.join(' ').toLowerCase();
+  const lowerText = (pageContent.text ?? '').toLowerCase();
+  const combinedMeta = `${lowerTitle} ${lowerDescription} ${lowerHeadings}`.trim();
+  const textLength = (pageContent.text ?? '').replace(/\s+/g, ' ').trim().length;
+
+  const loginPattern = /(^|[\W_])(login|signin|sign-in|signup|sign-up|register|auth|account|password|log in|sign in|登录|登入|注册)([\W_]|$)/;
+  const looksLikeLogin =
+    pageContent.hasPasswordField ||
+    loginPattern.test(lowerUrl) ||
+    loginPattern.test(combinedMeta) ||
+    (pageContent.formFieldCount >= 2 && /password|登录|signin|sign in/.test(lowerText));
+  if (looksLikeLogin && (pageContent.hasPasswordField || textLength < 1400)) {
+    return {
+      reason: 'login_page',
+      message: t('content.pageMayNotBeWorthSaving'),
+      detail: t('content.loginPageDetected'),
+    };
+  }
+
+  const parsedUrl = parseUrlSafely(url);
+  const hasSearchPath = Boolean(parsedUrl && /\/(search|results?)\b/.test(parsedUrl.pathname.toLowerCase()));
+  const hasSearchParam = Boolean(
+    parsedUrl && ['q', 'query', 'search', 'keyword', 'wd'].some((key) => parsedUrl.searchParams.has(key)),
+  );
+  const looksLikeSearchTitle = /search results|results for|搜索结果|为你找到|搜尋結果/.test(combinedMeta);
+  const searchLikeListing = pageContent.linkCount >= 12 && pageContent.headings.length <= 2 && textLength < 2600;
+  if ((hasSearchPath || hasSearchParam) && (looksLikeSearchTitle || searchLikeListing)) {
+    return {
+      reason: 'search_results',
+      message: t('content.bookmarkArticleInstead'),
+      detail: t('content.searchResultsDetected'),
+    };
+  }
+
+  const sparseText = textLength < 140;
+  const weakArticleSignals = pageContent.headings.length <= 1 && pageContent.description.trim().length < 60;
+  const navigationHeavy = pageContent.linkCount >= 18 && textLength < 500;
+  const formHeavy = pageContent.formFieldCount >= 3 && textLength < 500;
+  if (sparseText || (weakArticleSignals && (navigationHeavy || formHeavy || textLength < 260))) {
+    return {
+      reason: 'low_information_density',
+      message: t('content.pageMayNotBeWorthSaving'),
+      detail: t('content.lowInfoPageDetected'),
+    };
+  }
+
+  return null;
+}
+
+function parseUrlSafely(url: string): URL | null {
+  try {
+    return new URL(url);
+  } catch {
+    return null;
   }
 }
 
@@ -475,7 +630,6 @@ async function getSuggestion(
   const model = provider.chatModel(settings.aiModel);
   const pageTitle = input.pageContent.title || input.originalTitle;
   const headings = input.pageContent.headings.slice(0, MAX_HEADINGS);
-
   const outputLanguage = input.locale === 'zh-CN' ? 'Simplified Chinese' : 'English';
 
   const system =
@@ -495,7 +649,9 @@ async function getSuggestion(
   if (pageTitle) promptParts.push(`Page title: ${pageTitle}`);
   if (input.pageContent.description) promptParts.push(`Description: ${input.pageContent.description}`);
   if (headings.length > 0) promptParts.push(`Headings: ${headings.join(' | ')}`);
-  if (input.pageContent.text) promptParts.push(`Page text (truncated):\n${input.pageContent.text}`);
+  if (settings.sendPageText && input.pageContent.text) {
+    promptParts.push(`Page text (truncated):\n${input.pageContent.text}`);
+  }
   promptParts.push('Existing folders (use one of these if possible):');
   promptParts.push(input.folderPaths.join('\n'));
 

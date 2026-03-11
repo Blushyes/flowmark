@@ -108,6 +108,17 @@ export default function App() {
           </div>
         </div>
 
+        <Show when={settings()}>
+          {(current) => (
+            <div class="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+              <span class="text-slate-500">{t('popup.pageQualityFilter')}</span>
+              <span class="font-medium text-slate-900">
+                {current().pageQualityFilterEnabled ? t('popup.enabled') : t('common.off')}
+              </span>
+            </div>
+          )}
+        </Show>
+
         <Show when={summaryRecord()}>
           {(record) => (
             <div class="mt-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">

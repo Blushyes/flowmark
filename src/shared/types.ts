@@ -4,6 +4,7 @@ export type LocaleOverride = 'auto' | Locale;
 export interface FlowmarkSettings {
   enabled: boolean;
   duplicateCheckEnabled: boolean;
+  pageQualityFilterEnabled: boolean;
   summaryEnabled: boolean;
   autoAcceptEnabled: boolean;
   autoAcceptSeconds: number;
@@ -18,6 +19,7 @@ export interface FlowmarkSettings {
 export const DEFAULT_SETTINGS: FlowmarkSettings = {
   enabled: true,
   duplicateCheckEnabled: true,
+  pageQualityFilterEnabled: true,
   summaryEnabled: true,
   autoAcceptEnabled: true,
   autoAcceptSeconds: 5,
@@ -35,6 +37,9 @@ export interface PageContent {
   description: string;
   headings: string[];
   text: string | null;
+  hasPasswordField: boolean;
+  formFieldCount: number;
+  linkCount: number;
 }
 
 export interface GetPageContentRequest {
@@ -61,6 +66,24 @@ export type DuplicateBookmarkAction =
   | 'delete_new'
   | 'move_new_to_existing_folder'
   | 'open_existing';
+
+export type BookmarkPageQualityReason =
+  | 'login_page'
+  | 'search_results'
+  | 'low_information_density';
+
+export interface BookmarkPageQualityWarningPayload {
+  kind: 'quality-warning';
+  bookmarkId: string;
+  url: string;
+  title: string;
+  quality: {
+    reason: BookmarkPageQualityReason;
+    message: string;
+    detail: string;
+  };
+  ui: BookmarkSuggestionUiConfig;
+}
 
 export interface DuplicateBookmarkUpdatePayload {
   kind: 'duplicate';
@@ -96,7 +119,8 @@ export type BookmarkSuggestionUpdatePayload =
       ui: BookmarkSuggestionUiConfig;
       canOpenOptions: boolean;
     }
-  | DuplicateBookmarkUpdatePayload;
+  | DuplicateBookmarkUpdatePayload
+  | BookmarkPageQualityWarningPayload;
 
 export interface BookmarkSuggestionUiConfig {
   autoAcceptEnabled: boolean;
@@ -121,6 +145,18 @@ export interface ResolveDuplicateBookmarkRequest {
 }
 
 export interface DismissDuplicateBookmarkRequest {
+  bookmarkId: string;
+}
+
+export interface ContinueBookmarkRecommendationRequest {
+  bookmarkId: string;
+}
+
+export interface DismissBookmarkQualityWarningRequest {
+  bookmarkId: string;
+}
+
+export interface DeleteLowQualityBookmarkRequest {
   bookmarkId: string;
 }
 

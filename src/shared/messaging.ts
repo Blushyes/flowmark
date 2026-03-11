@@ -3,6 +3,9 @@ import { defineExtensionMessaging } from '@webext-core/messaging';
 import type {
   ApplyBookmarkSuggestionRequest,
   BookmarkSuggestionUpdatePayload,
+  ContinueBookmarkRecommendationRequest,
+  DeleteLowQualityBookmarkRequest,
+  DismissBookmarkQualityWarningRequest,
   DismissDuplicateBookmarkRequest,
   GetPageContentRequest,
   OpenBookmarkRequest,
@@ -18,6 +21,9 @@ export interface ProtocolMap {
   rejectBookmarkSuggestion(payload: RejectBookmarkSuggestionRequest): void;
   resolveDuplicateBookmark(payload: ResolveDuplicateBookmarkRequest): void;
   dismissDuplicateBookmark(payload: DismissDuplicateBookmarkRequest): void;
+  continueBookmarkRecommendation(payload: ContinueBookmarkRecommendationRequest): void;
+  dismissBookmarkQualityWarning(payload: DismissBookmarkQualityWarningRequest): void;
+  deleteLowQualityBookmark(payload: DeleteLowQualityBookmarkRequest): void;
   openBookmark(payload: OpenBookmarkRequest): void;
   openOptions(): void;
 }
