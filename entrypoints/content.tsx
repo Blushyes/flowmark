@@ -8,13 +8,13 @@ import { BookmarkSuggestionPill } from '@/src/content/BookmarkSuggestionPill';
 import { getCurrentLocale } from '@/src/shared/i18n';
 import { messaging } from '@/src/shared/messaging';
 import type {
-  BookmarkSuggestionUpdatePayload,
+  BookmarkDecisionCard,
   GetPageContentRequest,
   Locale,
   PageContent,
 } from '@/src/shared/types';
 
-const [payload, setPayload] = createSignal<BookmarkSuggestionUpdatePayload | null>(null);
+const [card, setCard] = createSignal<BookmarkDecisionCard | null>(null);
 const [locale, setLocale] = createSignal<Locale>('en');
 
 export default defineContentScript({
@@ -32,7 +32,7 @@ export default defineContentScript({
     let isMounted = false;
 
     const requestRemove = () => {
-      setPayload(null);
+      setCard(null);
       if (!ui || !isMounted) return;
       isMounted = false;
       ui.remove();
@@ -59,10 +59,10 @@ export default defineContentScript({
                   'z-index': 2147483647,
                 }}
               >
-                <Show when={payload()}>
-                  {(currentPayload) => (
+                <Show when={card()}>
+                  {(currentCard) => (
                     <BookmarkSuggestionPill
-                      payload={currentPayload()}
+                      card={currentCard()}
                       locale={locale()}
                       requestRemove={requestRemove}
                     />
@@ -80,10 +80,10 @@ export default defineContentScript({
       return instance;
     };
 
-    messaging.onMessage('bookmarkSuggestionUpdate', ({ data }) => {
+    messaging.onMessage('bookmarkCardUpdate', ({ data }) => {
       void (async () => {
         setLocale(await getCurrentLocale());
-        setPayload(data);
+        setCard(data.card);
         await waitForBody();
         const instance = await ensureUi();
         if (!isMounted) {

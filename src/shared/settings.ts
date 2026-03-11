@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { DEFAULT_SETTINGS, type FlowmarkSettings } from './types';
+import {
+  DEFAULT_SETTINGS,
+  type FlowmarkFeatureConfig,
+  type FlowmarkSettings,
+  type ResolvedFlowmarkSettings,
+} from './types';
 
 const localeOverrideSchema = z.enum(['auto', 'en', 'zh-CN']);
 
@@ -41,6 +46,26 @@ export async function getSettings(): Promise<FlowmarkSettings> {
       500,
       50_000,
     ),
+  };
+}
+
+export async function getResolvedSettings(): Promise<ResolvedFlowmarkSettings> {
+  const raw = await getSettings();
+  return {
+    raw,
+    features: toFeatureConfig(raw),
+  };
+}
+
+export function toFeatureConfig(settings: FlowmarkSettings): FlowmarkFeatureConfig {
+  return {
+    recommendation: { enabled: settings.enabled },
+    duplicate: { enabled: settings.duplicateCheckEnabled },
+    pageQuality: {
+      enabled: settings.pageQualityFilterEnabled,
+      autoDismissMs: 8000,
+    },
+    summary: { enabled: settings.summaryEnabled },
   };
 }
 

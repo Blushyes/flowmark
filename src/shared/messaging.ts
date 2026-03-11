@@ -1,30 +1,16 @@
 import { defineExtensionMessaging } from '@webext-core/messaging';
 
 import type {
-  ApplyBookmarkSuggestionRequest,
-  BookmarkSuggestionUpdatePayload,
-  ContinueBookmarkRecommendationRequest,
-  DeleteLowQualityBookmarkRequest,
-  DismissBookmarkQualityWarningRequest,
-  DismissDuplicateBookmarkRequest,
+  BookmarkCardUpdatePayload,
   GetPageContentRequest,
-  OpenBookmarkRequest,
   PageContent,
-  RejectBookmarkSuggestionRequest,
-  ResolveDuplicateBookmarkRequest,
+  SubmitBookmarkCardActionRequest,
 } from './types';
 
 export interface ProtocolMap {
-  bookmarkSuggestionUpdate(payload: BookmarkSuggestionUpdatePayload): void;
+  bookmarkCardUpdate(payload: BookmarkCardUpdatePayload): void;
+  submitBookmarkCardAction(payload: SubmitBookmarkCardActionRequest): void;
   getPageContent(payload: GetPageContentRequest): PageContent;
-  applyBookmarkSuggestion(payload: ApplyBookmarkSuggestionRequest): void;
-  rejectBookmarkSuggestion(payload: RejectBookmarkSuggestionRequest): void;
-  resolveDuplicateBookmark(payload: ResolveDuplicateBookmarkRequest): void;
-  dismissDuplicateBookmark(payload: DismissDuplicateBookmarkRequest): void;
-  continueBookmarkRecommendation(payload: ContinueBookmarkRecommendationRequest): void;
-  dismissBookmarkQualityWarning(payload: DismissBookmarkQualityWarningRequest): void;
-  deleteLowQualityBookmark(payload: DeleteLowQualityBookmarkRequest): void;
-  openBookmark(payload: OpenBookmarkRequest): void;
   openOptions(): void;
 }
 
