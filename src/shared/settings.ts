@@ -61,10 +61,7 @@ export function toFeatureConfig(settings: FlowmarkSettings): FlowmarkFeatureConf
   return {
     recommendation: { enabled: settings.enabled },
     duplicate: { enabled: settings.duplicateCheckEnabled },
-    pageQuality: {
-      enabled: settings.pageQualityFilterEnabled,
-      autoDismissMs: 8000,
-    },
+    pageQuality: { enabled: settings.pageQualityFilterEnabled },
     summary: { enabled: settings.summaryEnabled },
   };
 }

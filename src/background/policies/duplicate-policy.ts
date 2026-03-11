@@ -63,8 +63,6 @@ export const duplicatePolicy: BookmarkPolicy = {
             payload: { targetBookmarkId: first.id },
           },
         ],
-        autoDismissMs: 8000,
-        autoActionId: 'keep_new',
       },
     };
   },

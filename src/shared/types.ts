@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: FlowmarkSettings = {
 export interface FlowmarkFeatureConfig {
   recommendation: { enabled: boolean };
   duplicate: { enabled: boolean };
-  pageQuality: { enabled: boolean; autoDismissMs: number };
+  pageQuality: { enabled: boolean };
   summary: { enabled: boolean };
 }
 

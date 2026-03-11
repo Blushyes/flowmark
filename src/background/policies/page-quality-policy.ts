@@ -75,8 +75,6 @@ export const pageQualityPolicy: BookmarkPolicy = {
             intent: 'submit',
           },
         ],
-        autoDismissMs: context.settings.features.pageQuality.autoDismissMs,
-        autoActionId: 'keep_as_is',
       },
       continuation: {
         nextPolicyIndex: 2,
