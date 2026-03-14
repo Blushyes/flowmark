@@ -4,6 +4,13 @@
 @layer base {
   :root {
     color-scheme: light;
+    --flowmark-bg: #fcfcfc;
+    --flowmark-surface: #ffffff;
+    --flowmark-surface-muted: #fafafa;
+    --flowmark-border: rgb(229 229 229);
+    --flowmark-text: rgb(23 23 23);
+    --flowmark-text-muted: rgb(82 82 82);
+    --flowmark-text-subtle: rgb(115 115 115);
   }
 
   html,
@@ -18,9 +25,18 @@
   }
 
   body {
-    font-family: 'Inter', 'SF Pro Text', 'Segoe UI', sans-serif;
-    background: #f5fffd;
-    color: rgb(15 23 42);
+    font-family:
+      'SF Pro Text',
+      'SF Pro Display',
+      'Inter',
+      'Segoe UI',
+      sans-serif;
+    background: var(--flowmark-bg);
+    color: var(--flowmark-text);
+    letter-spacing: -0.01em;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .flowmark-scroll-root {
@@ -37,6 +53,11 @@
 
   button {
     cursor: pointer;
+  }
+
+  ::selection {
+    background: rgb(229 229 229);
+    color: var(--flowmark-text);
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -25,23 +25,23 @@ interface Props {
 
 export function AiProviderFields(props: Props) {
   return (
-    <div class="space-y-5">
+    <div class="space-y-6">
       <FieldBlock label={props.baseUrlLabel}>
         <input
           type="url"
           value={props.settings.aiBaseURL}
           placeholder={props.baseUrlPlaceholder}
-          class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+          class="mt-2 w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-400"
           onInput={(event) => props.onBaseUrlInput(event.currentTarget.value)}
         />
-        <div class="mt-2 text-xs text-slate-600">
+        <div class="mt-2 text-xs text-neutral-500">
           {props.permissionLabel}:{' '}
           <span
             class={
               props.permissionGranted == null
-                ? 'text-slate-600'
+                ? 'text-neutral-500'
                 : props.permissionGranted
-                  ? 'text-teal-700'
+                  ? 'text-neutral-900'
                   : 'text-amber-700'
             }
           >
@@ -61,7 +61,7 @@ export function AiProviderFields(props: Props) {
             type="text"
             value={props.settings.aiModel}
             placeholder={props.modelPlaceholder}
-            class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+            class="mt-2 w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-400"
             onInput={(event) => props.onModelInput(event.currentTarget.value)}
           />
         </FieldBlock>
@@ -70,7 +70,7 @@ export function AiProviderFields(props: Props) {
             type="password"
             value={props.settings.aiApiKey}
             placeholder={props.apiKeyPlaceholder}
-            class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+            class="mt-2 w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-400"
             onInput={(event) => props.onApiKeyInput(event.currentTarget.value)}
           />
         </FieldBlock>
@@ -84,7 +84,9 @@ export function AiProviderFields(props: Props) {
 function FieldBlock(props: { label: string; children: JSX.Element }) {
   return (
     <label class="block">
-      <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{props.label}</div>
+      <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
+        {props.label}
+      </div>
       {props.children}
     </label>
   );

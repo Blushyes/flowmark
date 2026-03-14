@@ -2,7 +2,7 @@
 
 @keyframes flowmark-slide-in {
   0% {
-    transform: translateX(16px);
+    transform: translateX(8px);
     opacity: 0;
   }
   100% {
@@ -17,7 +17,7 @@
     opacity: 1;
   }
   100% {
-    transform: translateX(16px);
+    transform: translateX(8px);
     opacity: 0;
   }
 }
@@ -30,12 +30,12 @@
   15%,
   45%,
   75% {
-    transform: translateX(-10px);
+    transform: translateX(-4px);
   }
   30%,
   60%,
   90% {
-    transform: translateX(10px);
+    transform: translateX(4px);
   }
 }
 
@@ -90,7 +90,7 @@
   }
 
   .flowmark-error-state {
-    animation: flowmark-error-shake 0.5s
+    animation: flowmark-error-shake 0.34s
       cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
   }
 
@@ -102,7 +102,7 @@
     stroke-dasharray: 60;
     stroke-dashoffset: 60;
     animation: flowmark-dash 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    fill: rgba(79, 70, 229, 0.08);
+    fill: rgba(64, 64, 64, 0.05);
   }
 
   .flowmark-bookmark-pulse {
@@ -110,4 +110,3 @@
     animation: flowmark-pulse-line 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 }
-

@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
 
 import { AiProviderFields } from '@/src/components/AiProviderFields';
 import { Button } from '@/src/components/Button';
@@ -101,31 +101,40 @@ export default function App() {
   };
 
   return (
-    <div class="flowmark-scroll-root absolute inset-0 overflow-y-auto overflow-x-hidden bg-slate-50 px-4 py-6 text-slate-900 scrollbar-thin scrollbar-w-1 scrollbar-track-transparent scrollbar-thumb-rounded-full scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400">
-      <div class="mx-auto max-w-3xl">
-        <header class="border-b border-slate-200 pb-5">
+    <div class="flowmark-scroll-root absolute inset-0 overflow-y-auto overflow-x-hidden bg-[#fcfcfc] px-5 py-8 text-neutral-900 scrollbar-thin scrollbar-w-1 scrollbar-track-transparent scrollbar-thumb-rounded-full scrollbar-thumb-neutral-300 hover:scrollbar-thumb-neutral-400">
+      <div class="mx-auto max-w-[880px]">
+        <header class="border-b border-neutral-200 pb-6">
           <div class="flex items-start justify-between gap-4">
             <div class="flex items-center gap-3">
-              <img src="/icon/32.png" alt="FlowMark" class="h-10 w-10 shrink-0 bg-transparent" />
+              <img src="/icon/32.png" alt="FlowMark" class="h-9 w-9 shrink-0 bg-transparent" />
               <div>
-                <h1 class="text-xl font-semibold tracking-[-0.01em] text-slate-950">{t('options.headingTitle')}</h1>
-                <p class="mt-1 text-sm text-slate-600">{t('options.headingDescription')}</p>
+                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
+                  FlowMark
+                </div>
+                <h1 class="mt-1 text-[28px] font-medium tracking-tight text-neutral-900">
+                  {t('options.headingTitle')}
+                </h1>
+                <p class="mt-2 max-w-[560px] text-sm leading-6 text-neutral-500">
+                  {t('options.headingDescription')}
+                </p>
               </div>
             </div>
-            <StatusBadge tone={providerStatus().tone}>{providerStatus().label}</StatusBadge>
+            <StatusBadge tone={providerStatus().tone} class="shrink-0">
+              {providerStatus().label}
+            </StatusBadge>
           </div>
         </header>
 
         <Show when={settings()} fallback={<Skeleton />}>
           {(current) => (
-            <div class="space-y-6 py-6">
-              <section class="rounded-3xl border border-slate-200 bg-white">
+            <div class="space-y-10 py-8">
+              <section class="border-b border-neutral-200 pb-10">
                 <SectionHeader
                   title={t('options.recommendationTitle')}
                   description={t('options.recommendationDescription')}
                 />
 
-                <div class="border-t border-slate-200">
+                <div class="mt-5 border-t border-neutral-200">
                   <SelectRow
                     label={t('options.languageLabel')}
                     description={t('options.languageDescription')}
@@ -195,13 +204,13 @@ export default function App() {
                 </div>
               </section>
 
-              <section class="rounded-3xl border border-slate-200 bg-white">
+              <section class="border-b border-neutral-200 pb-10">
                 <SectionHeader
                   title={t('options.aiProviderTitle')}
                   description={t('options.aiProviderDescription')}
                 />
 
-                <div class="border-t border-slate-200 px-5 py-5">
+                <div class="mt-5 border-t border-neutral-200 pt-5">
                   <AiProviderFields
                     settings={current()}
                     permissionGranted={permissionGranted()}
@@ -222,10 +231,10 @@ export default function App() {
                 </div>
               </section>
 
-              <footer class="flex flex-col items-start justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center">
-                <div class="text-sm text-slate-600">
+              <footer class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                <div class="min-h-5 text-sm text-neutral-500">
                   <Show when={saveStatus().kind === 'saved'}>
-                    <span class="text-teal-700">{t('common.saved')}</span>
+                    <span class="text-neutral-900">{t('common.saved')}</span>
                   </Show>
                   <Show when={saveErrorMessage()}>
                     {(message) => <span class="text-red-700">{message()}</span>}
@@ -245,9 +254,9 @@ export default function App() {
 
 function SectionHeader(props: { title: string; description: string }) {
   return (
-    <div class="px-5 py-5">
-      <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">{props.title}</h2>
-      <p class="mt-2 text-sm text-slate-600">{props.description}</p>
+    <div>
+      <h2 class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">{props.title}</h2>
+      <p class="mt-2 max-w-[620px] text-sm leading-6 text-neutral-500">{props.description}</p>
     </div>
   );
 }
@@ -259,17 +268,19 @@ function ToggleRow(props: {
   onInput: (checked: boolean) => void;
 }) {
   return (
-    <label class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 last:border-b-0">
-      <div>
-        <div class="text-sm font-medium text-slate-900">{props.label}</div>
-        <div class="mt-1 text-xs text-slate-600">{props.description}</div>
+    <label class="grid grid-cols-1 gap-4 border-b border-neutral-200 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div class="pr-4">
+        <div class="text-sm font-medium text-neutral-900">{props.label}</div>
+        <div class="mt-1 text-sm leading-6 text-neutral-500">{props.description}</div>
       </div>
-      <input
-        type="checkbox"
-        class="h-5 w-5 flex-none accent-slate-900"
-        checked={props.checked}
-        onInput={(event) => props.onInput(event.currentTarget.checked)}
-      />
+      <span class="justify-self-start sm:justify-self-end">
+        <input
+          type="checkbox"
+          class="h-4 w-4 rounded border-neutral-300 accent-neutral-900"
+          checked={props.checked}
+          onInput={(event) => props.onInput(event.currentTarget.checked)}
+        />
+      </span>
     </label>
   );
 }
@@ -285,17 +296,17 @@ function NumberRow(props: {
   last?: boolean;
 }) {
   return (
-    <div class={['grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[1fr_180px] sm:items-center', props.last ? '' : 'border-b border-slate-200'].join(' ')}>
-      <div>
-        <div class="text-sm font-medium text-slate-900">{props.label}</div>
-        <div class="mt-1 text-xs text-slate-600">{props.description}</div>
+    <div class={['grid grid-cols-1 gap-4 py-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center', props.last ? '' : 'border-b border-neutral-200'].join(' ')}>
+      <div class="pr-4">
+        <div class="text-sm font-medium text-neutral-900">{props.label}</div>
+        <div class="mt-1 text-sm leading-6 text-neutral-500">{props.description}</div>
       </div>
       <input
         type="number"
         min={props.min}
         max={props.max}
         value={props.value}
-        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
+        class="w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors focus:border-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-400"
         onInput={(event) => props.onInput(toInt(event.currentTarget.value))}
         disabled={props.disabled}
       />
@@ -311,14 +322,14 @@ function SelectRow(props: {
   onInput: (value: LocaleOverride) => void;
 }) {
   return (
-    <div class="grid grid-cols-1 gap-3 border-b border-slate-200 px-5 py-4 sm:grid-cols-[1fr_180px] sm:items-center">
-      <div>
-        <div class="text-sm font-medium text-slate-900">{props.label}</div>
-        <div class="mt-1 text-xs text-slate-600">{props.description}</div>
+    <div class="grid grid-cols-1 gap-4 border-b border-neutral-200 py-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
+      <div class="pr-4">
+        <div class="text-sm font-medium text-neutral-900">{props.label}</div>
+        <div class="mt-1 text-sm leading-6 text-neutral-500">{props.description}</div>
       </div>
       <select
         value={props.value}
-        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
+        class="w-full rounded-md border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none transition-colors focus:border-neutral-400"
         onInput={(event) => props.onInput(event.currentTarget.value as LocaleOverride)}
       >
         <For each={props.options}>{(option) => <option value={option.value}>{option.label}</option>}</For>
@@ -329,16 +340,17 @@ function SelectRow(props: {
 
 function Skeleton() {
   return (
-    <div class="space-y-6 py-6">
-      <div class="rounded-3xl border border-slate-200 bg-white p-5">
-        <div class="h-4 w-40 animate-pulse rounded bg-slate-100" />
-        <div class="mt-3 h-3 w-72 animate-pulse rounded bg-slate-100" />
-        <div class="mt-6 h-12 w-full animate-pulse rounded-2xl bg-slate-100" />
+    <div class="space-y-10 py-8">
+      <div class="border-b border-neutral-200 pb-10">
+        <div class="h-3 w-24 animate-pulse rounded bg-neutral-200" />
+        <div class="mt-4 h-6 w-52 animate-pulse rounded bg-neutral-200" />
+        <div class="mt-3 h-4 w-[28rem] animate-pulse rounded bg-neutral-100" />
+        <div class="mt-6 h-24 w-full animate-pulse rounded bg-neutral-100" />
       </div>
-      <div class="rounded-3xl border border-slate-200 bg-white p-5">
-        <div class="h-4 w-40 animate-pulse rounded bg-slate-100" />
-        <div class="mt-3 h-3 w-60 animate-pulse rounded bg-slate-100" />
-        <div class="mt-6 h-28 w-full animate-pulse rounded-2xl bg-slate-100" />
+      <div class="border-b border-neutral-200 pb-10">
+        <div class="h-3 w-24 animate-pulse rounded bg-neutral-200" />
+        <div class="mt-4 h-4 w-48 animate-pulse rounded bg-neutral-100" />
+        <div class="mt-6 h-28 w-full animate-pulse rounded bg-neutral-100" />
       </div>
     </div>
   );

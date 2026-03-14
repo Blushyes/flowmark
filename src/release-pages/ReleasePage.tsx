@@ -52,14 +52,14 @@ export function ReleasePage(props: Props) {
   };
 
   return (
-    <div class="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
-      <div class="mx-auto max-w-5xl">
+    <div class="min-h-screen bg-[#fcfcfc] px-5 py-8 text-neutral-900 sm:px-6 sm:py-12">
+      <div class="mx-auto max-w-4xl">
         <header class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex min-w-0 items-center gap-3">
-            <img src="/icon/48.png" alt="FlowMark" class="h-12 w-12 shrink-0 bg-transparent" />
+            <img src="/icon/48.png" alt="FlowMark" class="h-10 w-10 shrink-0 bg-transparent" />
             <div class="min-w-0">
-              <div class="text-lg font-semibold tracking-[-0.02em] text-slate-950">FlowMark</div>
-              <div class="text-sm text-slate-600">{content().brandTagline}</div>
+              <div class="text-base font-medium tracking-tight text-neutral-900">FlowMark</div>
+              <div class="text-sm text-neutral-500">{content().brandTagline}</div>
             </div>
           </div>
 
@@ -72,15 +72,15 @@ export function ReleasePage(props: Props) {
           </div>
         </header>
 
-        <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.85fr)]">
-          <section class="rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8 sm:py-8">
-            <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <div class="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.8fr)]">
+          <section class="border-b border-neutral-200 pb-10">
+            <div class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
               {content().eyebrow}
             </div>
-            <h1 class="mt-3 max-w-3xl text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-[2.7rem] sm:leading-[1.05]">
+            <h1 class="mt-3 max-w-3xl text-3xl font-medium tracking-tight text-neutral-900 sm:text-[3.2rem] sm:leading-[1.08]">
               {content().headline}
             </h1>
-            <p class="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-[15px]">
+            <p class="mt-5 max-w-2xl text-base leading-8 text-neutral-500">
               {content().description}
             </p>
 
@@ -102,17 +102,17 @@ export function ReleasePage(props: Props) {
 
           <aside class="space-y-4">
             <Show when={content().versionItems.length > 0}>
-              <section class="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
-                <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <section class="rounded-xl border border-neutral-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
                   {content().versionSectionTitle}
                 </div>
                 <div class="mt-4 space-y-3">
                   {content().versionItems.map((item) => (
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+                    <div class="border-t border-neutral-200 pt-3 first:border-t-0 first:pt-0">
+                      <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
                         {item.label}
                       </div>
-                      <div class="mt-1 text-sm font-semibold text-slate-950">{item.value}</div>
+                      <div class="mt-1 text-sm font-medium text-neutral-900">{item.value}</div>
                     </div>
                   ))}
                 </div>
@@ -120,16 +120,16 @@ export function ReleasePage(props: Props) {
             </Show>
 
             {content().infoCards.map((card) => (
-              <section class="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
-                <div class="text-sm font-semibold tracking-[-0.01em] text-slate-950">
+              <section class="rounded-xl border border-neutral-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <div class="text-sm font-medium tracking-tight text-neutral-900">
                   {card.title}
                 </div>
-                <p class="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-500">{card.body}</p>
                 <Show when={card.action}>
                   {(action) => (
                     <button
                       type="button"
-                      class="mt-4 inline-flex items-center rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/70"
+                      class="mt-4 inline-flex items-center rounded-md border border-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-neutral-900/10"
                       onClick={() => runAction(action().target)}
                     >
                       {action().label}
@@ -141,29 +141,29 @@ export function ReleasePage(props: Props) {
           </aside>
         </div>
 
-        <section class="mt-6 rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8 sm:py-8">
+        <section class="mt-10 border-t border-neutral-200 pt-10">
           <Show when={props.pageKind === 'install' && content().setupSteps?.length}>
-            <div class="mb-8 rounded-[28px] border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 sm:py-6">
-              <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <div class="mb-10 rounded-xl border border-neutral-200 bg-white px-5 py-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:px-6 sm:py-6">
+              <div class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
                 {content().setupSectionTitle}
               </div>
-              <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              <p class="mt-3 max-w-2xl text-sm leading-6 text-neutral-500">
                 {content().setupSectionDescription}
               </p>
 
               <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
                 <div class="space-y-3">
                   {content().setupSteps?.map((step, index) => (
-                    <article class="rounded-[24px] border border-slate-200 bg-white px-4 py-4">
+                    <article class="rounded-lg border border-neutral-200 bg-[#fafafa] px-4 py-4">
                       <div class="flex items-start gap-3">
-                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-medium text-white">
                           {index + 1}
                         </div>
                         <div>
-                          <div class="text-sm font-semibold tracking-[-0.01em] text-slate-950">
+                          <div class="text-sm font-medium tracking-tight text-neutral-900">
                             {step.title}
                           </div>
-                          <p class="mt-2 text-sm leading-6 text-slate-600">{step.body}</p>
+                          <p class="mt-2 text-sm leading-6 text-neutral-500">{step.body}</p>
                         </div>
                       </div>
                     </article>
@@ -172,28 +172,28 @@ export function ReleasePage(props: Props) {
 
                 <div class="space-y-3">
                   {content().setupFieldHints?.map((field) => (
-                    <article class="rounded-[24px] border border-slate-200 bg-white px-4 py-4">
-                      <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <article class="rounded-lg border border-neutral-200 bg-[#fafafa] px-4 py-4">
+                      <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
                         {field.label}
                       </div>
-                      <div class="mt-2 rounded-2xl bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+                      <div class="mt-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-900">
                         {field.value}
                       </div>
-                      <p class="mt-3 text-sm leading-6 text-slate-600">{field.description}</p>
+                      <p class="mt-3 text-sm leading-6 text-neutral-500">{field.description}</p>
                     </article>
                   ))}
                 </div>
               </div>
 
               <Show when={content().setupSaveNotes?.length}>
-                <div class="mt-6 rounded-[24px] border border-slate-200 bg-white px-4 py-4">
-                  <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <div class="mt-6 rounded-lg border border-neutral-200 bg-[#fafafa] px-4 py-4">
+                  <div class="text-[11px] font-medium uppercase tracking-[0.14em] text-neutral-400">
                     {content().setupSaveNotesTitle}
                   </div>
                   <div class="mt-3 space-y-2">
                     {content().setupSaveNotes?.map((note) => (
-                      <div class="flex items-start gap-2 text-sm leading-6 text-slate-600">
-                        <div class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600" />
+                      <div class="flex items-start gap-2 text-sm leading-6 text-neutral-500">
+                        <div class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" />
                         <span>{note}</span>
                       </div>
                     ))}
@@ -207,20 +207,20 @@ export function ReleasePage(props: Props) {
             </div>
           </Show>
 
-          <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <div class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
             {content().featureSectionTitle}
           </div>
-          <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+          <p class="mt-3 max-w-2xl text-sm leading-6 text-neutral-500">
             {content().featureSectionDescription}
           </p>
 
           <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {content().features.map((feature) => (
-              <article class="rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4">
-                <div class="text-sm font-semibold tracking-[-0.01em] text-slate-950">
+              <article class="rounded-lg border border-neutral-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                <div class="text-sm font-medium tracking-tight text-neutral-900">
                   {feature.title}
                 </div>
-                <p class="mt-2 text-sm leading-6 text-slate-600">{feature.description}</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-500">{feature.description}</p>
               </article>
             ))}
           </div>

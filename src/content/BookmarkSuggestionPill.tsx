@@ -96,20 +96,20 @@ export function BookmarkSuggestionPill(props: Props) {
     <div class="pointer-events-auto max-w-[560px]">
       <div
         class={[
-          'flex items-center gap-3 border border-slate-100 bg-white px-4 py-3 font-sans shadow-md',
-          isRecommendation() ? 'rounded-full' : 'rounded-3xl',
+          'flex items-center gap-3 border border-neutral-200 bg-white px-4 py-3 font-sans shadow-[0_8px_24px_rgba(0,0,0,0.08)]',
+          isRecommendation() ? 'rounded-[18px]' : 'rounded-xl',
           exiting() ? 'flowmark-animate-out' : 'flowmark-animate-in',
           isError() ? 'flowmark-error-state' : '',
         ].join(' ')}
       >
         <div
           class={[
-            'flex h-10 w-10 flex-none items-center justify-center rounded-full',
+            'flex h-9 w-9 flex-none items-center justify-center rounded-full border',
             isError()
-              ? 'bg-red-100 text-red-600'
+              ? 'border-red-200 bg-red-50 text-red-600'
               : isWarning()
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-indigo-100 text-indigo-600',
+                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                : 'border-neutral-200 bg-neutral-50 text-neutral-700',
           ].join(' ')}
         >
           <Show when={props.card.kind === 'info'}>
@@ -134,12 +134,18 @@ export function BookmarkSuggestionPill(props: Props) {
             <Show when={props.card.kind === 'recommendation'}>
               <FolderIcon />
             </Show>
-            <span class={isError() ? 'truncate text-sm font-medium text-red-700' : 'truncate text-sm font-medium text-slate-800'}>
+            <span
+              class={
+                isError()
+                  ? 'truncate text-sm font-medium text-red-700'
+                  : 'truncate text-sm font-medium text-neutral-900'
+              }
+            >
               {props.card.headline}
             </span>
             <Show when={props.card.badge}>
               {(badge) => (
-                <span class="flex-none rounded-sm bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+                <span class="flex-none rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-500">
                   {badge()}
                 </span>
               )}
@@ -148,7 +154,10 @@ export function BookmarkSuggestionPill(props: Props) {
 
           <Show when={props.card.body}>
             {(body) => (
-              <div class={isError() ? 'mt-0.5 text-sm text-red-500' : 'mt-0.5 truncate text-sm text-slate-500'} title={body()}>
+              <div
+                class={isError() ? 'mt-1 text-sm text-red-500' : 'mt-1 truncate text-sm text-neutral-500'}
+                title={body()}
+              >
                 {body()}
               </div>
             )}
@@ -157,7 +166,7 @@ export function BookmarkSuggestionPill(props: Props) {
           <Show when={props.card.meta && props.card.meta.length > 0}>
             <div class="mt-1 min-w-0">
               {props.card.meta?.map((item) => (
-                <div class="truncate text-xs text-slate-500" title={item.value}>
+                <div class="truncate text-xs text-neutral-400" title={item.value}>
                   {item.label ? `${item.label}: ` : ''}
                   {item.value}
                 </div>
@@ -170,24 +179,24 @@ export function BookmarkSuggestionPill(props: Props) {
           <Show when={isRecommendation() && primaryAction() && props.card.autoActionId === primaryAction()?.id && props.card.autoDismissMs}>
             <button
               type="button"
-              class="relative flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+              class="relative flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 text-neutral-700 transition-colors hover:bg-neutral-100"
               title={primaryAction()?.label}
               onClick={() => runAction(primaryAction()!)}
             >
               <svg class="absolute inset-0 h-full w-full" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="16" fill="none" stroke="#dcfce7" stroke-width="2" />
+                <circle cx="18" cy="18" r="16" fill="none" stroke="#e5e5e5" stroke-width="2" />
                 <circle
                   cx="18"
                   cy="18"
                   r="16"
                   fill="none"
-                  stroke="#22c55e"
+                  stroke="#171717"
                   stroke-width="2"
                   stroke-dasharray="100"
                   stroke-dashoffset={countdownProgress()}
                 />
               </svg>
-              <span class="absolute text-xs font-bold text-emerald-800">{secondsLeft()}</span>
+              <span class="absolute text-[10px] font-medium text-neutral-900">{secondsLeft()}</span>
             </button>
           </Show>
 
@@ -197,12 +206,12 @@ export function BookmarkSuggestionPill(props: Props) {
                 <button
                   type="button"
                   class={[
-                    'flex h-8 items-center justify-center rounded-full px-3 text-xs font-medium',
+                    'flex h-8 items-center justify-center rounded-md border px-3 text-xs font-medium transition-colors',
                     action.variant === 'primary'
-                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                      ? 'border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
                       : action.variant === 'danger'
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+                        ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                        : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50',
                   ].join(' ')}
                   onClick={() => runAction(action)}
                 >
@@ -219,7 +228,7 @@ export function BookmarkSuggestionPill(props: Props) {
 
 function FolderIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-none text-slate-600">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-none text-neutral-500">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
@@ -238,8 +247,8 @@ function LoadingIcon() {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="flowmarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#4F46E5" />
-          <stop offset="100%" stop-color="#7DD3FC" />
+          <stop offset="0%" stop-color="#404040" />
+          <stop offset="100%" stop-color="#a3a3a3" />
         </linearGradient>
       </defs>
       <path class="flowmark-bookmark-path" d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" stroke="url(#flowmarkGradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />

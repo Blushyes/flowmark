@@ -51,14 +51,14 @@ export default function App() {
   };
 
   return (
-    <div class="min-h-screen w-[360px] overflow-hidden bg-slate-50 text-slate-900">
+    <div class="min-h-screen w-[360px] overflow-hidden bg-[#fcfcfc] text-neutral-900">
       <div class="flex min-h-screen flex-col px-4 pb-4 pt-4">
-        <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center justify-between gap-3 border-b border-neutral-200 pb-4">
           <div class="flex min-w-0 items-center gap-3">
-            <img src="/icon/32.png" alt="FlowMark" class="h-9 w-9 shrink-0 bg-transparent" />
+            <img src="/icon/32.png" alt="FlowMark" class="h-8 w-8 shrink-0 bg-transparent" />
             <div class="min-w-0">
-              <div class="text-[15px] font-semibold tracking-[-0.01em] text-slate-950">FlowMark</div>
-              <div class="text-xs text-slate-600">{t('popup.tagline')}</div>
+              <div class="text-[15px] font-medium tracking-tight text-neutral-900">FlowMark</div>
+              <div class="text-xs text-neutral-500">{t('popup.tagline')}</div>
             </div>
           </div>
 
@@ -66,25 +66,25 @@ export default function App() {
             type="button"
             aria-label={t('popup.githubRepo')}
             title={t('popup.githubRepo')}
-            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/70"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-200 bg-white text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-neutral-900/10"
             onClick={openGithubRepo}
           >
-            <GitHubIcon class="h-6 w-6" />
+            <GitHubIcon class="h-4 w-4" />
           </button>
         </div>
 
-        <div class="mt-5 rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+        <div class="mt-5 rounded-xl border border-neutral-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+              <div class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
                 {t('popup.recommendation')}
               </div>
-              <div class="mt-2 text-xl font-semibold tracking-[-0.02em] text-slate-950">
+              <div class="mt-2 text-[22px] font-medium tracking-tight text-neutral-900">
                 <Show when={settings()} fallback={t('common.loading')}>
                   {(current) => (current().enabled ? t('popup.enabled') : t('popup.paused'))}
                 </Show>
               </div>
-              <div class="mt-2 max-w-[220px] text-sm leading-6 text-slate-600">
+              <div class="mt-2 max-w-[220px] text-sm leading-6 text-neutral-500">
                 {t('popup.tagline')}
               </div>
             </div>
@@ -93,15 +93,17 @@ export default function App() {
               type="button"
               aria-label={t('popup.toggleRecommendation')}
               class={[
-                'relative mt-1 inline-flex h-8 w-14 items-center rounded-full transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/70',
-                settings()?.enabled ? 'bg-teal-500' : 'bg-slate-300',
+                'relative mt-1 inline-flex h-7 w-12 items-center rounded-full border transition duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-neutral-900/10',
+                settings()?.enabled
+                  ? 'border-neutral-900 bg-neutral-900'
+                  : 'border-neutral-300 bg-neutral-200',
               ].join(' ')}
               onClick={toggleEnabled}
             >
               <span
                 class={[
-                  'inline-block h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200',
-                  settings()?.enabled ? 'translate-x-7' : 'translate-x-1',
+                  'inline-block h-5 w-5 rounded-full bg-white transition-transform duration-200',
+                  settings()?.enabled ? 'translate-x-6' : 'translate-x-1',
                 ].join(' ')}
               />
             </button>
@@ -110,9 +112,9 @@ export default function App() {
 
         <Show when={settings()}>
           {(current) => (
-            <div class="mt-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
-              <span class="text-slate-500">{t('popup.pageQualityFilter')}</span>
-              <span class="font-medium text-slate-900">
+            <div class="mt-3 flex items-center justify-between rounded-lg border border-neutral-200 bg-[#fafafa] px-4 py-3 text-sm text-neutral-600">
+              <span class="text-neutral-500">{t('popup.pageQualityFilter')}</span>
+              <span class="font-medium text-neutral-900">
                 {current().pageQualityFilterEnabled ? t('popup.enabled') : t('common.off')}
               </span>
             </div>
@@ -121,24 +123,24 @@ export default function App() {
 
         <Show when={summaryRecord()}>
           {(record) => (
-            <div class="mt-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-              <div class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            <div class="mt-3 rounded-xl border border-neutral-200 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+              <div class="text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-400">
                 {t('popup.savedSummary')}
               </div>
-              <div class="mt-2 truncate text-sm font-semibold text-slate-900" title={record().title}>
+              <div class="mt-3 truncate text-sm font-medium text-neutral-900" title={record().title}>
                 {record().title}
               </div>
-              <div class="mt-2 text-sm leading-6 text-slate-700">
+              <div class="mt-2 text-sm leading-6 text-neutral-600">
                 {record().summary}
               </div>
-              <div class="mt-2 truncate text-xs text-slate-500" title={record().folderPath}>
+              <div class="mt-3 truncate border-t border-neutral-200 pt-3 text-[11px] uppercase tracking-[0.14em] text-neutral-400" title={record().folderPath}>
                 {record().folderPath}
               </div>
             </div>
           )}
         </Show>
 
-        <div class="mt-auto pt-4">
+        <div class="mt-auto pt-5">
           <Button type="button" block onClick={openOptions}>
             {t('popup.openFullSettings')}
           </Button>
