@@ -1,3 +1,4 @@
+import type { JSX } from 'solid-js';
 import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js';
 
 import { Button } from '@/src/components/Button';
@@ -15,6 +16,7 @@ import type { FlowmarkSettings } from '@/src/shared/types';
 
 type Props = {
   pageKind: ReleasePageKind;
+  installAddon?: JSX.Element;
 };
 
 export function ReleasePage(props: Props) {
@@ -140,6 +142,71 @@ export function ReleasePage(props: Props) {
         </div>
 
         <section class="mt-6 rounded-[32px] border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8 sm:py-8">
+          <Show when={props.pageKind === 'install' && content().setupSteps?.length}>
+            <div class="mb-8 rounded-[28px] border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 sm:py-6">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                {content().setupSectionTitle}
+              </div>
+              <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                {content().setupSectionDescription}
+              </p>
+
+              <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                <div class="space-y-3">
+                  {content().setupSteps?.map((step, index) => (
+                    <article class="rounded-[24px] border border-slate-200 bg-white px-4 py-4">
+                      <div class="flex items-start gap-3">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div class="text-sm font-semibold tracking-[-0.01em] text-slate-950">
+                            {step.title}
+                          </div>
+                          <p class="mt-2 text-sm leading-6 text-slate-600">{step.body}</p>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                <div class="space-y-3">
+                  {content().setupFieldHints?.map((field) => (
+                    <article class="rounded-[24px] border border-slate-200 bg-white px-4 py-4">
+                      <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        {field.label}
+                      </div>
+                      <div class="mt-2 rounded-2xl bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+                        {field.value}
+                      </div>
+                      <p class="mt-3 text-sm leading-6 text-slate-600">{field.description}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <Show when={content().setupSaveNotes?.length}>
+                <div class="mt-6 rounded-[24px] border border-slate-200 bg-white px-4 py-4">
+                  <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {content().setupSaveNotesTitle}
+                  </div>
+                  <div class="mt-3 space-y-2">
+                    {content().setupSaveNotes?.map((note) => (
+                      <div class="flex items-start gap-2 text-sm leading-6 text-slate-600">
+                        <div class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600" />
+                        <span>{note}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={props.pageKind === 'install' && props.installAddon}>
+                <div class="mt-6">{props.installAddon}</div>
+              </Show>
+            </div>
+          </Show>
+
           <div class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             {content().featureSectionTitle}
           </div>

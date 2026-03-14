@@ -26,6 +26,17 @@ export interface ReleaseInfoCard {
   };
 }
 
+export interface ReleaseSetupStep {
+  title: string;
+  body: string;
+}
+
+export interface ReleaseSetupFieldHint {
+  label: string;
+  value: string;
+  description: string;
+}
+
 export interface ReleasePageContent {
   documentTitle: string;
   brandTagline: string;
@@ -41,6 +52,12 @@ export interface ReleasePageContent {
   featureSectionDescription: string;
   features: ReleaseFeatureItem[];
   infoCards: ReleaseInfoCard[];
+  setupSectionTitle?: string;
+  setupSectionDescription?: string;
+  setupSteps?: ReleaseSetupStep[];
+  setupFieldHints?: ReleaseSetupFieldHint[];
+  setupSaveNotesTitle?: string;
+  setupSaveNotes?: string[];
 }
 
 export const RELEASE_META: ReleaseMeta = {
@@ -112,6 +129,45 @@ export function getReleasePageContent(
         version: RELEASE_META.currentVersion,
       }),
       features: sharedFeatures,
+      setupSectionTitle: t('install.setupSectionTitle'),
+      setupSectionDescription: t('install.setupSectionDescription'),
+      setupSteps: [
+        {
+          title: t('install.setupStepOpenTitle'),
+          body: t('install.setupStepOpenDescription'),
+        },
+        {
+          title: t('install.setupStepFillTitle'),
+          body: t('install.setupStepFillDescription'),
+        },
+        {
+          title: t('install.setupStepSaveTitle'),
+          body: t('install.setupStepSaveDescription'),
+        },
+      ],
+      setupFieldHints: [
+        {
+          label: t('options.baseUrlLabel'),
+          value: t('options.baseUrlPlaceholder'),
+          description: t('install.baseUrlHintDescription'),
+        },
+        {
+          label: t('options.modelLabel'),
+          value: t('options.modelPlaceholder'),
+          description: t('install.modelHintDescription'),
+        },
+        {
+          label: t('options.apiKeyLabel'),
+          value: t('options.apiKeyPlaceholder'),
+          description: t('install.apiKeyHintDescription'),
+        },
+      ],
+      setupSaveNotesTitle: t('install.afterSaveTitle'),
+      setupSaveNotes: [
+        t('install.saveNoteLocalStorage'),
+        t('install.saveNotePermission'),
+        t('install.saveNoteActivation'),
+      ],
       infoCards: [
         {
           title: t('install.openSourceTitle'),

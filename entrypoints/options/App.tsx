@@ -1,6 +1,6 @@
-import type { JSX } from 'solid-js';
 import { createEffect, createMemo, createSignal, onMount, Show } from 'solid-js';
 
+import { AiProviderFields } from '@/src/components/AiProviderFields';
 import { Button } from '@/src/components/Button';
 import { StatusBadge } from '@/src/components/StatusBadge';
 import {
@@ -8,18 +8,19 @@ import {
   resolveLocale,
   useI18n,
 } from '@/src/shared/i18n';
-import { getSettings, normalizeAiBaseURL, setSettings, toOriginPermissionPattern } from '@/src/shared/settings';
+import { getSettings } from '@/src/shared/settings';
+import {
+  getAiPermissionGranted,
+  getProviderStatus,
+  saveFlowmarkSettings,
+  type SettingsSaveStatus,
+} from '@/src/shared/provider-settings';
 import type { FlowmarkSettings, LocaleOverride } from '@/src/shared/types';
-
-type SaveStatus =
-  | { kind: 'idle' }
-  | { kind: 'saved' }
-  | { kind: 'error'; message: string };
 
 export default function App() {
   const [settings, setLocalSettings] = createSignal<FlowmarkSettings | null>(null);
   const [permissionGranted, setPermissionGranted] = createSignal<boolean | null>(null);
-  const [saveStatus, setSaveStatus] = createSignal<SaveStatus>({ kind: 'idle' });
+  const [saveStatus, setSaveStatus] = createSignal<SettingsSaveStatus>({ kind: 'idle' });
 
   const currentLocale = createMemo(() =>
     resolveLocale(settings()?.localeOverride ?? 'auto', getBrowserUiLanguage()),
@@ -31,26 +32,13 @@ export default function App() {
     return status.kind === 'error' ? status.message : null;
   });
 
-  const aiOriginPattern = createMemo(() => {
-    const current = settings();
-    if (!current?.aiBaseURL) return null;
-    try {
-      return toOriginPermissionPattern(current.aiBaseURL);
-    } catch {
-      return null;
-    }
-  });
-
   const providerStatus = createMemo(() => {
-    const current = settings();
-    if (!current) return { label: t('common.loading'), tone: 'neutral' as const };
-    if (!current.aiBaseURL || !current.aiModel) {
-      return { label: t('options.statusSetupNeeded'), tone: 'warning' as const };
-    }
-    if (permissionGranted() === false) {
-      return { label: t('options.statusPermissionMissing'), tone: 'warning' as const };
-    }
-    return { label: t('options.statusReady'), tone: 'ready' as const };
+    return getProviderStatus(settings(), permissionGranted(), {
+      loading: t('common.loading'),
+      setupNeeded: t('options.statusSetupNeeded'),
+      permissionMissing: t('options.statusPermissionMissing'),
+      ready: t('options.statusReady'),
+    });
   });
 
   createEffect(() => {
@@ -58,19 +46,15 @@ export default function App() {
   });
 
   createEffect(() => {
-    const pattern = aiOriginPattern();
-    if (!pattern) {
-      setPermissionGranted(null);
-      return;
-    }
-
     void (async () => {
-      try {
-        const granted = await browser.permissions.contains({ origins: [pattern] });
-        setPermissionGranted(granted);
-      } catch {
+      const current = settings();
+      if (!current) {
         setPermissionGranted(null);
+        return;
       }
+
+      const granted = await getAiPermissionGranted(current);
+      setPermissionGranted(granted);
     })();
   });
 
@@ -94,31 +78,11 @@ export default function App() {
     setSaveStatus({ kind: 'idle' });
 
     try {
-      const normalizedBaseURL = current.aiBaseURL ? normalizeAiBaseURL(current.aiBaseURL) : '';
-      let enabled = current.enabled;
+      const result = await saveFlowmarkSettings(current);
+      setPermissionGranted(result.permissionGranted);
+      setLocalSettings(result.next);
 
-      if (normalizedBaseURL) {
-        const originPattern = toOriginPermissionPattern(normalizedBaseURL);
-        const granted = await browser.permissions.request({ origins: [originPattern] });
-        setPermissionGranted(granted);
-
-        if (!granted && enabled) {
-          enabled = false;
-        }
-      }
-
-      const next: FlowmarkSettings = {
-        ...current,
-        enabled,
-        aiBaseURL: normalizedBaseURL,
-        autoAcceptSeconds: clampInt(current.autoAcceptSeconds, 0, 60),
-        maxPageChars: clampInt(current.maxPageChars, 500, 50_000),
-      };
-
-      await setSettings(next);
-      setLocalSettings(next);
-
-      if (current.enabled && !enabled) {
+      if (result.recommendationDisabledByPermission) {
         setSaveStatus({
           kind: 'error',
           message: t('options.permissionDeniedDisabled'),
@@ -238,41 +202,23 @@ export default function App() {
                 />
 
                 <div class="border-t border-slate-200 px-5 py-5">
-                  <div class="space-y-5">
-                    <FieldBlock label={t('options.baseUrlLabel')}>
-                      <input
-                        type="url"
-                        value={current().aiBaseURL}
-                        placeholder={t('options.baseUrlPlaceholder')}
-                        class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
-                        onInput={(event) => update('aiBaseURL', event.currentTarget.value)}
-                      />
-                      <div class="mt-2 text-xs text-slate-600">
-                        {t('options.permissionLabel')}: <span class={permissionGranted() == null ? 'text-slate-600' : permissionGranted() ? 'text-teal-700' : 'text-amber-700'}>{permissionText(permissionGranted(), t)}</span>
-                      </div>
-                    </FieldBlock>
-
-                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                      <FieldBlock label={t('options.modelLabel')}>
-                        <input
-                          type="text"
-                          value={current().aiModel}
-                          placeholder={t('options.modelPlaceholder')}
-                          class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
-                          onInput={(event) => update('aiModel', event.currentTarget.value)}
-                        />
-                      </FieldBlock>
-                      <FieldBlock label={t('options.apiKeyLabel')}>
-                        <input
-                          type="password"
-                          value={current().aiApiKey}
-                          placeholder={t('options.apiKeyPlaceholder')}
-                          class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
-                          onInput={(event) => update('aiApiKey', event.currentTarget.value)}
-                        />
-                      </FieldBlock>
-                    </div>
-                  </div>
+                  <AiProviderFields
+                    settings={current()}
+                    permissionGranted={permissionGranted()}
+                    baseUrlLabel={t('options.baseUrlLabel')}
+                    baseUrlPlaceholder={t('options.baseUrlPlaceholder')}
+                    permissionLabel={t('options.permissionLabel')}
+                    modelLabel={t('options.modelLabel')}
+                    modelPlaceholder={t('options.modelPlaceholder')}
+                    apiKeyLabel={t('options.apiKeyLabel')}
+                    apiKeyPlaceholder={t('options.apiKeyPlaceholder')}
+                    unknownLabel={t('common.unknown')}
+                    grantedLabel={t('common.granted')}
+                    notGrantedLabel={t('common.notGranted')}
+                    onBaseUrlInput={(value) => update('aiBaseURL', value)}
+                    onModelInput={(value) => update('aiModel', value)}
+                    onApiKeyInput={(value) => update('aiApiKey', value)}
+                  />
                 </div>
               </section>
 
@@ -381,15 +327,6 @@ function SelectRow(props: {
   );
 }
 
-function FieldBlock(props: { label: string; children: JSX.Element }) {
-  return (
-    <label class="block">
-      <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">{props.label}</div>
-      {props.children}
-    </label>
-  );
-}
-
 function Skeleton() {
   return (
     <div class="space-y-6 py-6">
@@ -407,20 +344,7 @@ function Skeleton() {
   );
 }
 
-function permissionText(
-  granted: boolean | null,
-  t: (key: 'common.unknown' | 'common.granted' | 'common.notGranted') => string,
-): string {
-  if (granted == null) return t('common.unknown');
-  return granted ? t('common.granted') : t('common.notGranted');
-}
-
 function toInt(value: string): number {
   const number = Number.parseInt(value, 10);
   return Number.isFinite(number) ? number : 0;
-}
-
-function clampInt(value: number, min: number, max: number): number {
-  const result = Number.isFinite(value) ? Math.trunc(value) : min;
-  return Math.min(max, Math.max(min, result));
 }
